@@ -1,0 +1,85 @@
+/* =========================================
+   HUST Equipment Manager — Global Styles
+   Tông màu: Trắng + Đỏ (BKHN)
+   ========================================= */
+
+:root {
+  /* Brand Colors — HUST */
+  --hust-red:        #C8102E;
+  --hust-red-light:  #e8213f;
+  --hust-red-dark:   #a00d24;
+  --hust-red-deep:   #7a0a1c;
+  --hust-gold:       #F0B429;
+  --hust-gold-light: #f7cc6a;
+
+  /* Neutral */
+  --white:       #ffffff;
+  --off-white:   #fdf5f6;
+  --gray-50:     #fff8f8;
+  --gray-100:    #faeaea;
+  --gray-200:    #f0d4d8;
+  --gray-400:    #b08890;
+  --gray-600:    #7a4850;
+  --gray-800:    #3d1520;
+
+  /* Semantic */
+  --primary:        var(--hust-red);
+  --primary-light:  var(--hust-red-light);
+  --primary-dark:   var(--hust-red-dark);
+  --accent:         var(--hust-gold);
+  --text-primary:   var(--gray-800);
+  --text-secondary: var(--gray-600);
+  --text-muted:     var(--gray-400);
+  --border:         var(--gray-200);
+  --surface:        var(--white);
+  --bg:             var(--off-white);
+
+  /* Typography */
+  --font-display: 'Playfair Display', serif;
+  --font-body:    'Be Vietnam Pro', sans-serif;
+
+  /* Spacing */
+  --radius-sm:  6px;
+  --radius-md:  12px;
+  --radius-lg:  20px;
+  --radius-xl:  32px;
+
+  /* Shadows */
+  --shadow-sm:  0 1px 3px rgba(200,16,46,0.08), 0 1px 2px rgba(200,16,46,0.04);
+  --shadow-md:  0 4px 16px rgba(200,16,46,0.12), 0 2px 6px rgba(200,16,46,0.06);
+  --shadow-lg:  0 12px 40px rgba(200,16,46,0.16), 0 4px 12px rgba(200,16,46,0.08);
+  --shadow-xl:  0 24px 64px rgba(200,16,46,0.20), 0 8px 24px rgba(200,16,46,0.10);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4,0,0.2,1);
+  --transition-base: 250ms cubic-bezier(0.4,0,0.2,1);
+  --transition-slow: 400ms cubic-bezier(0.4,0,0.2,1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; scroll-behavior: smooth; }
+body {
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  background: var(--bg);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; font-family: inherit; border: none; background: none; }
+input, select, textarea { font-family: inherit; }
+img, svg { display: block; max-width: 100%; }
+ul, ol { list-style: none; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--gray-100); }
+::-webkit-scrollbar-thumb { background: var(--hust-red-light); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--hust-red); }
+
+:focus-visible { outline: 2px solid var(--hust-red); outline-offset: 2px; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0;
+  margin: -1px; overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border-width: 0;
+}
