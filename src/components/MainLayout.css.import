@@ -1,0 +1,2 @@
+/* Add this import to MainLayout.jsx top */
+import './MainLayout.css';
