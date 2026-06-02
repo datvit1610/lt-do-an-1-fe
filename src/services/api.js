@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://113.161.103.134:8070/api/v1';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -33,7 +33,7 @@ export const authService = {
   login: (username, password) =>
     api.post('/auth/login', { username, password }),
   logout: () => api.post('/auth/logout'),
-  me: () => api.get('/auth/me'),
+  profile: () => api.get('/profile'),
 };
 
 export default api;

@@ -6,7 +6,7 @@
 .layout {
   display: flex;
   min-height: 100dvh;
-  background: #f5f6fa;
+  background: #f8f9fc;
   transition: none;
 }
 
@@ -14,14 +14,14 @@
 .sidebar {
   width: 260px;
   flex-shrink: 0;
-  background: #1a1f2e;
+  background: #161a26;
   display: flex;
   flex-direction: column;
   height: 100dvh;
   position: sticky;
   top: 0;
   overflow: hidden;
-  transition: width 0.25s cubic-bezier(0.4,0,0.2,1);
+  transition: width 0.25s cubic-bezier(0.4,0,0.2,1), transform 0.25s ease;
   z-index: 100;
 }
 
@@ -321,6 +321,9 @@
   flex: 1;
   padding: 32px 32px;
   overflow-y: auto;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 /* ── Page header ── */
@@ -552,7 +555,66 @@ table.tbl {
 }
 
 /* Responsive */
+@media (max-width: 1200px) {
+  .layout { position: relative; }
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    transform: translateX(0);
+    transition: transform 0.25s ease, width 0.25s ease;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.12);
+  }
+  .layout--closed .sidebar {
+    transform: translateX(-100%);
+  }
+  .layout__main {
+    min-height: 100vh;
+  }
+  .topbar {
+    padding: 0 20px;
+  }
+  .layout__content {
+    padding: 24px 18px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .sidebar { width: 100%; max-width: 320px; }
+  .topbar { padding: 0 18px; }
+  .sidebar__head { padding: 14px 16px; }
+  .sidebar__nav { padding: 14px 12px; }
+  .sidebar__item { padding: 12px 14px; }
+}
+
+@media (max-width: 900px) {
+  .topbar { padding: 0 16px; }
+  .layout__content { padding: 20px 14px; }
+  .sidebar__footer { padding: 12px 12px; }
+  .topbar__profile { display: none; }
+}
+
 @media (max-width: 768px) {
-  .sidebar { position: fixed; }
-  .layout__content { padding: 20px 16px; }
+  .topbar { padding: 0 14px; }
+  .layout__content { padding: 18px 12px; }
+  .sidebar { width: 100%; max-width: none; }
+  .sidebar__nav { padding: 12px 10px; }
+}
+
+@media (max-width: 640px) {
+  .topbar { height: auto; padding: 12px 14px; }
+  .topbar__right { gap: 6px; }
+  .sidebar__head { justify-content: space-between; padding: 14px 12px; }
+}
+
+@media (max-width: 540px) {
+  .layout__content { padding: 14px 12px; }
+  .page-header { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .page-header__actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; gap: 10px; }
+  .card__body { padding: 18px; }
+  .tbl th, .tbl td { padding: 12px 10px; }
+  .sidebar { transform: translateX(-100%); }
+  .layout--closed .sidebar { transform: translateX(-100%); }
 }

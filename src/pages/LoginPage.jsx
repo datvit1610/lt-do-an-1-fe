@@ -13,7 +13,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [shake, setShake] = useState(false);
   const passwordRef = useRef(null);
 
   function handleChange(e) {
@@ -26,32 +25,45 @@ export default function LoginPage() {
     e.preventDefault();
     if (!form.username.trim() || !form.password.trim()) {
       setError('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.');
-      triggerShake();
       return;
     }
     setLoading(true);
     setError('');
     try {
       const res = await authService.login(form.username.trim(), form.password);
-      login(res.data.user, res.data.token);
+      const response = res.data;
+      const data = response?.data;
+
+      if (response?.success === false || response?.code === 400) {
+        setError(response?.message || 'Đăng nhập không thành công.');
+        return;
+      }
+
+      if (!data?.accessToken) {
+        throw new Error('Không nhận được accessToken từ server.');
+      }
+
+      login({ username: form.username.trim() }, data.accessToken, data.refreshToken);
+
+      const profileRes = await authService.profile();
+      const profileData = profileRes.data?.data;
+      if (profileData) {
+        login(profileData, data.accessToken, data.refreshToken);
+      }
+
       navigate('/dashboard');
     } catch (err) {
+      const serverData = err.response?.data;
       const msg =
-        err.response?.data?.message ||
-        (err.response?.status === 401
+        err.response?.status === 401
           ? 'Tên đăng nhập hoặc mật khẩu không đúng.'
-          : 'Không thể kết nối đến máy chủ. Vui lòng thử lại.');
+          : serverData?.message || serverData?.data?.message || 'Không thể kết nối đến máy chủ. Vui lòng thử lại.';
       setError(msg);
-      triggerShake();
     } finally {
       setLoading(false);
     }
   }
 
-  function triggerShake() {
-    setShake(true);
-    setTimeout(() => setShake(false), 600);
-  }
 
   return (
     <div className="login-root">
@@ -128,7 +140,7 @@ export default function LoginPage() {
 
       {/* ---- Right: Login form ---- */}
       <div className="login-panel">
-        <div className={`login-card ${shake ? 'login-card--shake' : ''}`}>
+        <div className={`login-card ${error ? 'login-card--error' : ''}`}>
           {/* Header */}
           <div className="login-card__header">
             <div className="login-card__logo-sm">
