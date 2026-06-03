@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8088/api/v1';
+// const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8088/api/v1';
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://113.161.103.134:8070/api/v1';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -58,6 +59,29 @@ export const userService = {
   getAll: (params) => api.get('/user/get-all', { params }),
   update: (userId, payload) => api.post(`/user/update/${userId}`, payload),
   remove: (userId) => api.post(`/user/delete/${userId}`),
+};
+
+// ---- Equipment endpoints ----
+export const equipmentService = {
+  getAll: (params) => api.get('/equipment/get-all', { params }),
+  create: (payload) => api.post('/equipment/create', payload),
+  update: (equipmentId, payload) => api.post(`/equipment/update/${equipmentId}`, payload),
+  delete: (equipmentId) => api.post(`/equipment/delete/${equipmentId}`),
+  import: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/equipment/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  export: () => api.get('/equipment/export'),
+};
+
+// ---- Borrow/Return Receipt endpoints ----
+export const receiptService = {
+  getAll: (params) => api.get('/receipt/get-all', { params }),
+  create: (payload) => api.post('/receipt/create', payload),
+  update: (receiptId, payload) => api.post(`/receipt/update/${receiptId}`, payload),
+  delete: (receiptId) => api.post(`/receipt/delete/${receiptId}`),
+  export: () => api.get('/receipt/export'),
 };
 
 export default api;

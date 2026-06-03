@@ -71,177 +71,175 @@ export default function LoginPage() {
       <div className="login-bg">
         <div className="login-bg__mesh" />
         <div className="login-bg__particles">
-          {Array.from({ length: 16 }).map((_, i) => (
+          {Array.from({ length: 20 }).map((_, i) => (
             <span key={i} className="particle" style={{ '--i': i }} />
           ))}
         </div>
-        <div className="login-bg__grid" />
+        <div className="login-bg__glow login-bg__glow--1" />
+        <div className="login-bg__glow login-bg__glow--2" />
+
+        {/* Decorative background pattern */}
+        <svg className="login-bg__decoration" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
+          {/* Floating geometric shapes */}
+          {/* Box top-left */}
+          <g opacity="0.12" animation="float-shape 6s ease-in-out infinite">
+            <rect x="40" y="40" width="100" height="100" rx="12" fill="none" stroke="url(#grad1)" strokeWidth="2"/>
+            <rect x="60" y="60" width="60" height="60" rx="8" fill="none" stroke="url(#grad1)" strokeWidth="1.5"/>
+          </g>
+
+          {/* Circle top-right */}
+          <g opacity="0.1" animation="float-shape 8s ease-in-out infinite 1s">
+            <circle cx="1100" cy="80" r="60" fill="none" stroke="url(#grad2)" strokeWidth="2"/>
+            <circle cx="1100" cy="80" r="40" fill="none" stroke="url(#grad2)" strokeWidth="1"/>
+          </g>
+
+          {/* Hexagon middle */}
+          <g opacity="0.08" animation="float-shape 7s ease-in-out infinite 0.5s">
+            <polygon points="600,150 660,180 660,240 600,270 540,240 540,180" fill="none" stroke="url(#grad1)" strokeWidth="2"/>
+          </g>
+
+          {/* Triangles bottom-left */}
+          <g opacity="0.11" animation="float-shape 9s ease-in-out infinite 1.5s">
+            <polygon points="100,700 150,750 50,750" fill="none" stroke="url(#grad2)" strokeWidth="2"/>
+            <polygon points="120,680 160,720 80,720" fill="none" stroke="url(#grad1)" strokeWidth="1.5"/>
+          </g>
+
+          {/* Curved lines bottom-right */}
+          <g opacity="0.1" animation="float-shape 10s ease-in-out infinite 2s">
+            <path d="M 1050 700 Q 1100 650 1150 700" fill="none" stroke="url(#grad2)" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M 1050 730 Q 1100 700 1150 730" fill="none" stroke="url(#grad1)" strokeWidth="1.5" strokeLinecap="round"/>
+          </g>
+
+          {/* Gradients */}
+          <defs>
+            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style={{ stopColor: '#C8102E', stopOpacity: 0.8 }} />
+              <stop offset="100%" style={{ stopColor: '#F0B429', stopOpacity: 0.6 }} />
+            </linearGradient>
+            <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style={{ stopColor: '#F0B429', stopOpacity: 0.7 }} />
+              <stop offset="100%" style={{ stopColor: '#C8102E', stopOpacity: 0.5 }} />
+            </linearGradient>
+          </defs>
+        </svg>
       </div>
 
-      {/* ---- Left: Brand panel ---- */}
-      <div className="login-brand">
-        <div className="login-brand__inner">
-          {/* Logo */}
-          <div className="login-brand__badge">
-            <HustLogo size={110} />
+      {/* ---- Center: Login container ---- */}
+      <div className="login-container">
+        {/* Header with logo & title */}
+        <div className="login-header">
+          <div className="login-header__badge">
+            <HustLogo size={80} />
           </div>
-
-          <h1 className="login-brand__title">
-            Đại học<br />Bách Khoa<br />Hà Nội
-          </h1>
-
-          <div className="login-brand__divider" />
-
-          <p className="login-brand__subtitle">
-            Hệ thống Quản lý<br />
-            Thiết bị &amp; Dụng cụ<br />
-            Học tập
-          </p>
-
-          <div className="login-brand__tags">
-            <span className="tag">Phòng thí nghiệm</span>
-            <span className="tag">Thiết bị học tập</span>
-            <span className="tag">Quản lý tài sản</span>
-          </div>
-
-          {/* Stats */}
-          <div className="login-brand__stats">
-            <div className="stat-item">
-              <span className="stat-number">50+</span>
-              <span className="stat-label">Phòng lab</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-number">2000+</span>
-              <span className="stat-label">Thiết bị</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-number">100+</span>
-              <span className="stat-label">Cán bộ</span>
-            </div>
-          </div>
+          <h1 className="login-header__title">HUST EMS</h1>
+          <p className="login-header__subtitle">Hệ thống Quản lý Thiết bị &amp; Dụng cụ Học tập</p>
         </div>
 
-        {/* Building decoration */}
-        <div className="login-brand__building" aria-hidden="true">
-          <svg viewBox="0 0 500 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="150" y="50" width="200" height="110" fill="white" opacity="0.04"/>
-            {[170,190,210,230,250,270,290,310,330].map((x,i) => (
-              <rect key={i} x={x} y="80" width="7" height="80" fill="white" opacity="0.03"/>
-            ))}
-            <polygon points="130,50 250,5 370,50" fill="white" opacity="0.05"/>
-            <rect x="232" y="0" width="36" height="50" fill="white" opacity="0.06"/>
-            <rect x="238" y="5" width="24" height="24" rx="12" fill="white" opacity="0.08"/>
-            <rect x="20" y="80" width="130" height="80" fill="white" opacity="0.03"/>
-            <rect x="350" y="80" width="130" height="80" fill="white" opacity="0.03"/>
-            <line x1="0" y1="158" x2="500" y2="158" stroke="white" strokeWidth="1" opacity="0.1"/>
-          </svg>
-        </div>
-      </div>
-
-      {/* ---- Right: Login form ---- */}
-      <div className="login-panel">
-        <div className={`login-card ${error ? 'login-card--error' : ''}`}>
-          {/* Header */}
-          <div className="login-card__header">
-            <div className="login-card__logo-sm">
-              <HustLogo size={52} />
-            </div>
-            <div>
-              <h2 className="login-card__title">Đăng nhập</h2>
-              <p className="login-card__desc">Hệ thống quản lý thiết bị học tập</p>
-            </div>
-          </div>
-
-          <div className="login-card__rule">
-            <span /><span className="login-card__rule-label">HUST EMS</span><span />
-          </div>
-
-          {/* Form */}
-          <form className="login-form" onSubmit={handleSubmit} noValidate>
-            <div className="form-field">
-              <label className="form-label" htmlFor="username">Tên đăng nhập</label>
-              <div className="form-input-wrap">
-                <span className="form-input-icon">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-                  </svg>
-                </span>
-                <input
-                  id="username" name="username" type="text"
-                  className="form-input"
-                  placeholder="Nhập tên đăng nhập..."
-                  value={form.username}
-                  onChange={handleChange}
-                  autoComplete="username"
-                  autoFocus
-                  onKeyDown={(e) => e.key === 'Enter' && passwordRef.current?.focus()}
-                />
+        {/* Form panel */}
+        <div className="login-panel">
+          <div className={`login-card ${error ? 'login-card--error' : ''}`}>
+            {/* Header */}
+            <div className="login-card__header">
+              <div className="login-card__logo-sm">
+                <HustLogo size={52} />
+              </div>
+              <div>
+                <h2 className="login-card__title">Đăng nhập</h2>
+                <p className="login-card__desc">Hệ thống quản lý thiết bị học tập</p>
               </div>
             </div>
 
-            <div className="form-field">
-              <label className="form-label" htmlFor="password">Mật khẩu</label>
-              <div className="form-input-wrap">
-                <span className="form-input-icon">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                  </svg>
-                </span>
-                <input
-                  ref={passwordRef}
-                  id="password" name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  className="form-input"
-                  placeholder="Nhập mật khẩu..."
-                  value={form.password}
-                  onChange={handleChange}
-                  autoComplete="current-password"
-                />
-                <button type="button" className="form-input-toggle"
-                  onClick={() => setShowPassword(v => !v)}
-                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>
-                  {showPassword ? (
+            <div className="login-card__rule">
+              <span /><span className="login-card__rule-label">HUST EMS</span><span />
+            </div>
+
+            {/* Form */}
+            <form className="login-form" onSubmit={handleSubmit} noValidate>
+              <div className="form-field">
+                <label className="form-label" htmlFor="username">Tên đăng nhập</label>
+                <div className="form-input-wrap">
+                  <span className="form-input-icon">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                      <line x1="1" y1="1" x2="23" y2="23"/>
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
                     </svg>
-                  ) : (
+                  </span>
+                  <input
+                    id="username" name="username" type="text"
+                    className="form-input"
+                    placeholder="Nhập tên đăng nhập..."
+                    value={form.username}
+                    onChange={handleChange}
+                    autoComplete="username"
+                    autoFocus
+                    onKeyDown={(e) => e.key === 'Enter' && passwordRef.current?.focus()}
+                  />
+                </div>
+              </div>
+
+              <div className="form-field">
+                <label className="form-label" htmlFor="password">Mật khẩu</label>
+                <div className="form-input-wrap">
+                  <span className="form-input-icon">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                      <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                     </svg>
-                  )}
-                </button>
+                  </span>
+                  <input
+                    ref={passwordRef}
+                    id="password" name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    className="form-input"
+                    placeholder="Nhập mật khẩu..."
+                    value={form.password}
+                    onChange={handleChange}
+                    autoComplete="current-password"
+                  />
+                  <button type="button" className="form-input-toggle"
+                    onClick={() => setShowPassword(v => !v)}
+                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>
+                    {showPassword ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                        <line x1="1" y1="1" x2="23" y2="23"/>
+                      </svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {error && (
-              <div className="form-error" role="alert">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
-                {error}
-              </div>
-            )}
-
-            <button type="submit" className={`btn-login ${loading ? 'btn-login--loading' : ''}`} disabled={loading}>
-              {loading ? (
-                <><span className="btn-login__spinner" />Đang xác thực...</>
-              ) : (
-                <>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-                    <polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
+              {error && (
+                <div className="form-error" role="alert">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                   </svg>
-                  Đăng nhập
-                </>
+                  {error}
+                </div>
               )}
-            </button>
-          </form>
 
-          <p className="login-card__note">
-            Hệ thống chỉ dành cho cán bộ được cấp tài khoản.<br />
-            Liên hệ quản trị viên nếu cần hỗ trợ.
-          </p>
+              <button type="submit" className={`btn-login ${loading ? 'btn-login--loading' : ''}`} disabled={loading}>
+                {loading ? (
+                  <><span className="btn-login__spinner" />Đang xác thực...</>
+                ) : (
+                  <>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                      <polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
+                    </svg>
+                    Đăng nhập
+                  </>
+                )}
+              </button>
+            </form>
+
+            <p className="login-card__note">
+              Hệ thống chỉ dành cho cán bộ được cấp tài khoản.<br />
+              Liên hệ quản trị viên nếu cần hỗ trợ.
+            </p>
+          </div>
         </div>
 
         <p className="login-copyright">
