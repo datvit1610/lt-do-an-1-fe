@@ -1,34 +1,55 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/api';
 
 export default function HoSo() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [pwModal, setPwModal] = useState(false);
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
   const [showPw, setShowPw] = useState({ current: false, next: false, confirm: false });
   const [pwError, setPwError] = useState('');
   const [pwSuccess, setPwSuccess] = useState(false);
+  const [pwLoading, setPwLoading] = useState(false);
 
   const profile = {
-    name: user?.name || 'Admin',
-    username: user?.username || 'admin',
-    email: user?.email || 'admin@hust.edu.vn',
-    phone: user?.phone || '0123456789',
-    role: user?.role || 'Quản trị viên',
-    type: user?.type || 'Chính thức',
-    createdAt: user?.createdAt || '01/01/2024',
+    name: user?.fullName || user?.name || '',
+    username: user?.username || '',
+    email: user?.email || '',
+    phone: user?.phoneNumber || user?.phone || '',
+    role: user?.position || user?.role || '',
   };
 
-  const initials = profile.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const initials = (profile.name || profile.username || '?')
+    .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
-  function handleChangePw() {
+  async function handleChangePw() {
     setPwError('');
     if (!pw.current || !pw.next || !pw.confirm) { setPwError('Vui lòng điền đầy đủ thông tin.'); return; }
     if (pw.next.length < 6) { setPwError('Mật khẩu mới phải ít nhất 6 ký tự.'); return; }
     if (pw.next !== pw.confirm) { setPwError('Mật khẩu xác nhận không khớp.'); return; }
-    // TODO: call API change password
-    setPwSuccess(true);
-    setTimeout(() => { setPwModal(false); setPwSuccess(false); setPw({ current: '', next: '', confirm: '' }); }, 1500);
+
+    setPwLoading(true);
+    try {
+      const res = await authService.resetPassword(pw.current, pw.next);
+      const response = res.data;
+      if (response?.success === false) {
+        setPwError(response?.message || 'Đổi mật khẩu không thành công.');
+        return;
+      }
+      setPwSuccess(true);
+      // Đổi mật khẩu thành công: xóa token và bắt đăng nhập lại
+      setTimeout(() => {
+        logout();
+        navigate('/login');
+      }, 1500);
+    } catch (err) {
+      const serverData = err.response?.data;
+      setPwError(serverData?.message || 'Mật khẩu hiện tại không đúng hoặc có lỗi xảy ra.');
+    } finally {
+      setPwLoading(false);
+    }
   }
 
   return (
@@ -65,7 +86,6 @@ export default function HoSo() {
             <InfoRow label="Tên đăng nhập" value={profile.username} />
             <InfoRow label="Email" value={profile.email} />
             <InfoRow label="Vai trò" value={profile.role} highlight />
-            <InfoRow label="Loại tài khoản" value={profile.type} />
           </div>
         </div>
       </div>
@@ -83,6 +103,7 @@ export default function HoSo() {
                 <div style={{ textAlign: 'center', padding: '16px 0', color: '#059669' }}>
                   <div style={{ fontSize: '2rem', marginBottom: 8 }}>✓</div>
                   <div style={{ fontWeight: 600 }}>Đổi mật khẩu thành công!</div>
+                  <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: 6 }}>Vui lòng đăng nhập lại...</div>
                 </div>
               ) : (
                 <>
@@ -120,8 +141,10 @@ export default function HoSo() {
             </div>
             {!pwSuccess && (
               <div className="modal__footer">
-                <button className="btn btn--outline" onClick={() => setPwModal(false)}>Hủy</button>
-                <button className="btn btn--primary" onClick={handleChangePw}>Xác nhận</button>
+                <button className="btn btn--outline" onClick={() => setPwModal(false)} disabled={pwLoading}>Hủy</button>
+                <button className="btn btn--primary" onClick={handleChangePw} disabled={pwLoading}>
+                  {pwLoading ? 'Đang xử lý...' : 'Xác nhận'}
+                </button>
               </div>
             )}
           </div>
@@ -135,7 +158,7 @@ function InfoRow({ label, value, highlight }) {
   return (
     <div>
       <div style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 500, marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: highlight ? '#c8102e' : '#1a1f2e' }}>{value}</div>
+      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: highlight ? '#c8102e' : '#1a1f2e' }}>{value || '—'}</div>
     </div>
   );
 }

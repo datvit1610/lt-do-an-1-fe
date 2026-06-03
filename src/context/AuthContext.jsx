@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { authService } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -46,6 +47,26 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const refreshProfile = useCallback(async () => {
+    try {
+      const res = await authService.profile();
+      const profileData = res.data?.data;
+      if (profileData) {
+        setUser(profileData);
+        localStorage.setItem('hust_user', JSON.stringify(profileData));
+      }
+      return profileData;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Khi reload trang: nếu còn token thì gọi lại API profile để làm mới thông tin user
+  useEffect(() => {
+    if (token) refreshProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const logout = useCallback(() => {
     setUser(null);
     setToken(null);
@@ -56,7 +77,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, refreshToken, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, token, refreshToken, login, logout, refreshProfile, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );

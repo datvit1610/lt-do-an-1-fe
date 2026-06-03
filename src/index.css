@@ -82,6 +82,13 @@ ul, ol { list-style: none; }
 ::-webkit-scrollbar-thumb { background: var(--hust-red-light); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--hust-red); }
 
+/* Thanh cuộn trung tính cho dropdown react-select (AppSelect) */
+.appselect__menu-list { scrollbar-width: thin; scrollbar-color: #d1d5db transparent; }
+.appselect__menu-list::-webkit-scrollbar { width: 8px; }
+.appselect__menu-list::-webkit-scrollbar-track { background: transparent; }
+.appselect__menu-list::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 8px; }
+.appselect__menu-list::-webkit-scrollbar-thumb:hover { background: #b6bcc6; }
+
 :focus-visible { outline: 2px solid var(--hust-red); outline-offset: 2px; }
 
 .sr-only {

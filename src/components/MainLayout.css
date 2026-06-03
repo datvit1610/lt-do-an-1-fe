@@ -402,6 +402,21 @@
 .btn--danger-ghost:hover { background: #fff0f2; }
 .btn--sm { padding: 6px 12px; font-size: 0.8rem; }
 
+/* Nút thao tác dạng icon vuông (Sửa / Xóa) */
+.btn--icon {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1.5px solid #e5e7eb;
+  background: #fff;
+  color: #6b7280;
+  justify-content: center;
+}
+.btn--icon:hover { background: #f3f4f6; color: #111; border-color: #d1d5db; }
+.btn--icon.btn--icon-danger { color: var(--hust-red); }
+.btn--icon.btn--icon-danger:hover { background: #fff0f2; border-color: #fca5a5; color: var(--hust-red); }
+
 /* ── Table ── */
 .tbl-wrap { overflow-x: auto; }
 table.tbl {
@@ -427,6 +442,16 @@ table.tbl {
 }
 .tbl tr:last-child td { border-bottom: none; }
 .tbl tr:hover td { background: #fafbff; }
+
+/* Bảng rộng, kéo ngang: cột không xuống dòng */
+.tbl--nowrap { width: auto; min-width: 100%; }
+.tbl--nowrap th, .tbl--nowrap td { white-space: nowrap; }
+
+/* Thanh cuộn ngang gọn cho vùng bảng */
+.tbl-wrap { scrollbar-width: thin; }
+.tbl-wrap::-webkit-scrollbar { height: 9px; }
+.tbl-wrap::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 8px; }
+.tbl-wrap::-webkit-scrollbar-thumb:hover { background: #b6bcc6; }
 
 /* ── Badge ── */
 .badge {
@@ -487,6 +512,7 @@ table.tbl {
   font-family: var(--font-body);
 }
 .input:focus { border-color: var(--hust-red); box-shadow: 0 0 0 3px rgba(200,16,46,0.08); }
+.input:disabled { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
 .select {
   height: 40px;
   padding: 0 12px;
@@ -553,6 +579,46 @@ table.tbl {
   padding: 16px 24px 20px;
   border-top: 1px solid #f0f0f0;
 }
+
+/* ── Pagination (react-paginate) ── */
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pagination li a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.pagination li a:hover { border-color: var(--hust-red); color: var(--hust-red); }
+.pagination__active a {
+  background: var(--hust-red);
+  border-color: var(--hust-red);
+  color: #fff !important;
+}
+.pagination__nav a { font-size: 1.1rem; }
+.pagination__disabled a {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: #e5e7eb;
+  color: #9ca3af;
+}
+.pagination__disabled a:hover { border-color: #e5e7eb; color: #9ca3af; }
 
 /* Responsive */
 @media (max-width: 1200px) {

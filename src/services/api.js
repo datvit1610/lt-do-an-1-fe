@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://113.161.103.134:8070/api/v1';
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8088/api/v1';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -34,6 +34,30 @@ export const authService = {
     api.post('/auth/login', { username, password }),
   logout: () => api.post('/auth/logout'),
   profile: () => api.get('/profile'),
+  resetPassword: (oldPassword, newPassword) =>
+    api.post('/reset-password', { oldPassword, newPassword }),
+};
+
+// ---- Role endpoints ----
+export const roleService = {
+  select: () => api.get('/role/select'),
+  getAll: (params = { page: 0, size: 100 }) => api.get('/role/get-all', { params }),
+  create: (payload) => api.post('/role/create', payload),
+  update: (roleId, payload) => api.post(`/role/update/${roleId}`, payload),
+  delete: (roleId) => api.post(`/role/delete/${roleId}`),
+};
+
+// ---- Permission endpoints ----
+export const permissionService = {
+  getAll: () => api.get('/permission/get-all'),
+};
+
+// ---- User endpoints ----
+export const userService = {
+  create: (payload) => api.post('/user/create', payload),
+  getAll: (params) => api.get('/user/get-all', { params }),
+  update: (userId, payload) => api.post(`/user/update/${userId}`, payload),
+  remove: (userId) => api.post(`/user/delete/${userId}`),
 };
 
 export default api;
