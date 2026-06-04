@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './components/MainLayout';
 import ChatBot from './components/ChatBot';
+import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import DanhSachTaiKhoan from './pages/DanhSachTaiKhoan';
 import NhomQuyen from './pages/NhomQuyen';
@@ -19,9 +20,10 @@ export default function App() {
         <ChatBot />
 
         <Routes>
-          {/* Redirect login and unknown routes straight into the app */}
-          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+          {/* Public */}
+          <Route path="/login" element={<LoginPage />} />
 
+          {/* Protected — dùng MainLayout làm shell */}
           <Route
             path="/"
             element={
@@ -39,7 +41,7 @@ export default function App() {
             <Route path="tai-khoan/ho-so" element={<HoSo />} />
           </Route>
 
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
