@@ -1,14 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ReactPaginate from 'react-paginate';
 import AppSelect from '../components/AppSelect';
+import { deviceService } from '../services/api';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
-const EQUIPMENT_STATUSES = [
-  { value: 'HOẠT_ĐỘNG', label: 'Hoạt động' },
-  { value: 'TẠM_NGƯNG', label: 'Tạm ngưng' },
-  { value: 'HƯ_HỎNG', label: 'Hư hỏng' },
-  { value: 'KỸ_TRỤC', label: 'Kỹ trục' },
-];
 const EQUIPMENT_CATEGORIES = [
   { value: 'ĐIỆN_THOẠI', label: 'Điện thoại' },
   { value: 'MÁY_TÍNH', label: 'Máy tính' },
@@ -41,10 +36,9 @@ export default function QuanLyThietBi() {
     equipmentName: '',
     equipmentCode: '',
     category: '',
-    serialNumber: '',
     location: '',
-    purchaseDate: '',
-    status: 'HOẠT_ĐỘNG',
+    quantity: 1,
+    status: 1,
     note: '',
   });
   const [saving, setSaving] = useState(false);
@@ -58,37 +52,46 @@ export default function QuanLyThietBi() {
     setTimeout(() => setToast(''), 3000);
   }
 
-  /* Mock: Gọi API danh sách thiết bị */
+  /* Gọi API danh sách thiết bị */
   const fetchEquipments = useCallback(async () => {
     setLoading(true);
     try {
-      // TODO: Thay bằng API thực
       const params = {
-        equipmentName: query.equipmentName || undefined,
-        equipmentCode: query.equipmentCode || undefined,
-        category: query.category || undefined,
+        name: query.equipmentName || undefined,
+        deviceCode: query.equipmentCode || undefined,
+        deviceType: query.category || undefined,
         status: query.status || undefined,
         page,
         size: pageSize,
       };
-      console.log('Fetch params:', params);
 
-      // Mock data
-      const mockData = [
-        { equipmentId: '1', equipmentCode: 'TB001', equipmentName: 'Máy tính để bàn', category: 'MÁY_TÍNH', serialNumber: 'SN12345', location: 'Phòng 101', purchaseDate: '2023-01-15', status: 'HOẠT_ĐỘNG', note: 'Mới', createdDate: '2023-01-15', modifiedDate: '2024-01-10', createdBy: 'admin' },
-        { equipmentId: '2', equipmentCode: 'TB002', equipmentName: 'Máy in HP LaserJet', category: 'MÁY_IN', serialNumber: 'SN12346', location: 'Phòng 102', purchaseDate: '2022-06-10', status: 'HOẠT_ĐỘNG', note: 'Đang sử dụng', createdDate: '2022-06-10', modifiedDate: '2024-01-10', createdBy: 'admin' },
-        { equipmentId: '3', equipmentCode: 'TB003', equipmentName: 'Điện thoại iPhone', category: 'ĐIỆN_THOẠI', serialNumber: 'SN12347', location: 'Phòng 103', purchaseDate: '2023-05-20', status: 'TẠM_NGƯNG', note: 'Chờ sửa', createdDate: '2023-05-20', modifiedDate: '2024-01-10', createdBy: 'user1' },
-        { equipmentId: '4', equipmentCode: 'TB004', equipmentName: 'Tủ tài liệu', category: 'TỦ', serialNumber: 'SN12348', location: 'Phòng 104', purchaseDate: '2021-03-12', status: 'HƯ_HỎNG', note: 'Cần thay thế', createdDate: '2021-03-12', modifiedDate: '2024-01-10', createdBy: 'admin' },
-        { equipmentId: '5', equipmentCode: 'TB005', equipmentName: 'Máy tính xách tay', category: 'MÁY_TÍNH', serialNumber: 'SN12349', location: 'Phòng 105', purchaseDate: '2023-08-05', status: 'HOẠT_ĐỘNG', note: '', createdDate: '2023-08-05', modifiedDate: '2024-01-10', createdBy: 'user2' },
-      ];
+      const response = await deviceService.getAll(params);
+      const apiData = response.data.data; // Extract nested data object
+      
+      // Map DeviceResponse fields to component's equipment structure
+      const mappedData = (apiData.content || []).map(item => ({
+        equipmentId: item.id,
+        equipmentCode: item.deviceCode,
+        equipmentName: item.name,
+        category: item.deviceType,
+        location: item.location || '',
+        status: item.status,
+        note: item.description || '',
+        quantity: item.quantity || 1,
+        createdDate: item.createdDate,
+        createdBy: item.createdBy || 'system',
+      }));
 
-      setEquipments(mockData);
+      setEquipments(mappedData);
+      
+      // Handle pagination from API
       setPageInfo({
-        pagesCount: Math.ceil(mockData.length / pageSize),
-        total: mockData.length,
-        currentPage: page,
+        pagesCount: apiData.pagesCount || 0,
+        total: apiData.currentTotalElementsCount || 0,
+        currentPage: apiData.currentPage || page,
       });
-    } catch {
+    } catch (err) {
+      console.error('Fetch equipments error:', err);
       setEquipments([]);
       setPageInfo({ pagesCount: 0, total: 0, currentPage: 0 });
     } finally {
@@ -113,7 +116,7 @@ export default function QuanLyThietBi() {
   }
 
   function openAdd() {
-    setForm({ equipmentName: '', equipmentCode: '', category: '', serialNumber: '', location: '', purchaseDate: '', status: 'HOẠT_ĐỘNG', note: '' });
+    setForm({ equipmentName: '', equipmentCode: '', category: '', location: '', quantity: 1, status: 1, note: '' });
     setSaveError('');
     setModal({ mode: 'add' });
   }
@@ -123,9 +126,8 @@ export default function QuanLyThietBi() {
       equipmentName: eq.equipmentName,
       equipmentCode: eq.equipmentCode,
       category: eq.category,
-      serialNumber: eq.serialNumber,
       location: eq.location,
-      purchaseDate: eq.purchaseDate,
+      quantity: eq.quantity || 1,
       status: eq.status,
       note: eq.note,
     });
@@ -142,29 +144,31 @@ export default function QuanLyThietBi() {
     }
     setSaving(true);
     try {
-      // TODO: Thay bằng API thực
+      // Convert status: 1 = hoạt động, 0 = ngưng
+      const statusMap = { 1: 1, 0: 0, 'HOẠT_ĐỘNG': 1, 'TẠM_NGƯNG': 0, 'HƯ_HỎNG': 0, 'KỸ_TRỤC': 0 };
+      const statusValue = typeof form.status === 'number' ? form.status : statusMap[form.status] || 1;
+      
       const payload = {
-        equipmentName: form.equipmentName.trim(),
-        equipmentCode: form.equipmentCode.trim(),
-        category: form.category,
-        serialNumber: form.serialNumber.trim(),
-        location: form.location.trim(),
-        purchaseDate: form.purchaseDate,
-        status: form.status,
-        note: form.note.trim(),
+        name: form.equipmentName.trim(),
+        deviceCode: form.equipmentCode.trim(),
+        deviceType: form.category,
+        location: form.location?.trim() || '',
+        quantity: parseInt(form.quantity) || 1,
+        description: form.note?.trim() || '',
+        status: statusValue,
       };
-      console.log('Saving:', payload);
 
       if (modal.mode === 'add') {
-        const newItem = { ...payload, equipmentId: String(Date.now()), createdDate: new Date().toISOString().split('T')[0], createdBy: 'current_user' };
-        setEquipments([newItem, ...equipments]);
+        await deviceService.create(payload);
       } else {
-        setEquipments(equipments.map(e => e.equipmentId === form.equipmentId ? { ...e, ...payload } : e));
+        await deviceService.update(form.equipmentId, payload);
       }
+      
       setModal(null);
+      fetchEquipments(); // Reload data
       showToast(modal.mode === 'add' ? 'Tạo thiết bị thành công.' : 'Cập nhật thiết bị thành công.');
     } catch (err) {
-      setSaveError(err.message || 'Có lỗi xảy ra.');
+      setSaveError(err.response?.data?.message || err.message || 'Có lỗi xảy ra.');
     } finally {
       setSaving(false);
     }
@@ -174,12 +178,12 @@ export default function QuanLyThietBi() {
     setDeleteError('');
     setDeleting(true);
     try {
-      // TODO: Thay bằng API thực
-      setEquipments(equipments.filter(e => e.equipmentId !== deleteModal.equipmentId));
+      await deviceService.delete(deleteModal.equipmentId);
       setDeleteModal(null);
+      fetchEquipments(); // Reload data
       showToast('Xóa thiết bị thành công.');
     } catch (err) {
-      setDeleteError(err.message || 'Có lỗi xảy ra.');
+      setDeleteError(err.response?.data?.message || err.message || 'Có lỗi xảy ra.');
     } finally {
       setDeleting(false);
     }
@@ -204,46 +208,71 @@ export default function QuanLyThietBi() {
   }
 
   /* Export Excel */
-  function handleExportExcel() {
-    // TODO: Dùng library xlsx để export
-    const data = equipments.map((e, idx) => ({
-      'STT': idx + 1,
-      'Mã thiết bị': e.equipmentCode,
-      'Tên thiết bị': e.equipmentName,
-      'Loại': e.category,
-      'Serial': e.serialNumber,
-      'Vị trí': e.location,
-      'Ngày mua': e.purchaseDate,
-      'Trạng thái': e.status,
-      'Ghi chú': e.note,
-    }));
+  async function handleExportExcel() {
+    try {
+      setLoading(true);
+      // Call API with same filters but size=10000 to get all data
+      const params = {
+        name: query.equipmentName || undefined,
+        deviceCode: query.equipmentCode || undefined,
+        deviceType: query.category || undefined,
+        status: query.status || undefined,
+        page: 0,
+        size: 10000,
+      };
 
-    const csv = [
-      Object.keys(data[0] || {}).join(','),
-      ...data.map(row => Object.values(row).map(v => `"${v}"`).join(','))
-    ].join('\n');
+      const response = await deviceService.getAll(params);
+      const apiData = response.data.data;
+      const allEquipments = (apiData.content || []).map(item => ({
+        stt: '',
+        equipmentCode: item.deviceCode,
+        equipmentName: item.name,
+        category: item.deviceType,
+        location: item.location || '',
+        quantity: item.quantity || 1,
+        createdDate: item.createdDate,
+        createdBy: item.createdBy || '',
+        status: item.status === 1 ? 'Hoạt động' : 'Ngưng',
+        note: item.description || '',
+      }));
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `danh-sach-thiet-bi-${new Date().getTime()}.csv`;
-    link.click();
-    showToast('Xuất dữ liệu thành công.');
+      // Add STT
+      allEquipments.forEach((e, idx) => { e.stt = idx + 1; });
+
+      // Create CSV
+      const headers = ['STT', 'Mã thiết bị', 'Tên thiết bị', 'Loại', 'Vị trí/Phòng', 'Số lượng', 'Ngày nhập', 'Người nhập', 'Trạng thái', 'Mô tả'];
+      const rows = allEquipments.map(e => [
+        e.stt,
+        e.equipmentCode,
+        e.equipmentName,
+        e.category,
+        e.location,
+        e.quantity,
+        e.createdDate,
+        e.createdBy,
+        e.status,
+        e.note,
+      ]);
+
+      const csv = [
+        headers.join(','),
+        ...rows.map(row => row.map(v => `"${v}"`).join(','))
+      ].join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `danh-sach-thiet-bi-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      showToast(`Xuất dữ liệu thành công (${allEquipments.length} thiết bị).`);
+    } catch (err) {
+      showToast('Lỗi khi xuất dữ liệu: ' + (err.message || 'Có lỗi xảy ra'));
+    } finally {
+      setLoading(false);
+    }
   }
 
   const COL_COUNT = 11;
-  const getStatusBadgeColor = (status) => {
-    const statusMap = {
-      'HOẠT_ĐỘNG': 'badge--green',
-      'TẠM_NGƯNG': 'badge--yellow',
-      'HƯ_HỎNG': 'badge--red',
-      'KỸ_TRỤC': 'badge--blue',
-    };
-    return statusMap[status] || 'badge--gray';
-  };
-  const getStatusLabel = (status) => {
-    return EQUIPMENT_STATUSES.find(s => s.value === status)?.label || status;
-  };
   const getCategoryLabel = (cat) => {
     return EQUIPMENT_CATEGORIES.find(c => c.value === cat)?.label || cat;
   };
@@ -312,7 +341,7 @@ export default function QuanLyThietBi() {
             <div className="field">
               <label>Trạng thái</label>
               <AppSelect
-                options={[{ value: '', label: 'Tất cả' }, ...EQUIPMENT_STATUSES]}
+                options={[{ value: '', label: 'Tất cả' }, { value: 1, label: 'Hoạt động' }, { value: 0, label: 'Ngưng' }]}
                 value={fStatus}
                 onChange={(val) => setFStatus(val || '')}
                 isClearable
@@ -338,15 +367,15 @@ export default function QuanLyThietBi() {
             <thead>
               <tr>
                 <th>STT</th>
-                <th>Mã TBi</th>
+                <th>Mã thiết bị</th>
                 <th>Tên thiết bị</th>
                 <th>Loại</th>
-                <th>Serial</th>
-                <th>Vị trí</th>
-                <th>Ngày mua</th>
-                <th>Ngày tạo</th>
+                <th>Vị trí/Phòng</th>
+                <th>Số lượng</th>
+                <th>Ngày nhập</th>
+                <th>Người nhập</th>
                 <th>Trạng thái</th>
-                <th>Ghi chú</th>
+                <th>Mô tả</th>
                 <th>Thao tác</th>
               </tr>
             </thead>
@@ -363,16 +392,24 @@ export default function QuanLyThietBi() {
                   <td><strong>{eq.equipmentCode}</strong></td>
                   <td>{eq.equipmentName}</td>
                   <td><span style={{ color: '#6b7280', fontSize: '0.85rem' }}>{getCategoryLabel(eq.category)}</span></td>
-                  <td style={{ color: '#6b7280', fontSize: '0.85rem' }}>{eq.serialNumber || '—'}</td>
                   <td style={{ color: '#6b7280' }}>{eq.location || '—'}</td>
-                  <td style={{ color: '#9ca3af', fontSize: '0.82rem' }}>{eq.purchaseDate || '—'}</td>
+                  <td style={{ color: '#6b7280', textAlign: 'center' }}>{eq.quantity || 1}</td>
                   <td style={{ color: '#9ca3af', fontSize: '0.82rem' }}>{eq.createdDate || '—'}</td>
+                  <td style={{ color: '#6b7280', fontSize: '0.85rem' }}>{eq.createdBy || '—'}</td>
                   <td>
-                    <span className={`badge ${getStatusBadgeColor(eq.status)}`}>
-                      {getStatusLabel(eq.status)}
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '4px 10px',
+                      borderRadius: '12px',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      color: '#fff',
+                      backgroundColor: eq.status === 1 ? '#10b981' : '#ef4444'
+                    }}>
+                      {eq.status === 1 ? 'Hoạt động' : 'Ngưng'}
                     </span>
                   </td>
-                  <td style={{ color: '#6b7280', fontSize: '0.85rem', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <td style={{ color: '#6b7280', fontSize: '0.85rem', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={eq.note}>
                     {eq.note || '—'}
                   </td>
                   <td>
@@ -449,17 +486,13 @@ export default function QuanLyThietBi() {
                 </div>
                 <div className="field">
                   <label>Loại thiết bị *</label>
-                  <AppSelect
-                    options={EQUIPMENT_CATEGORIES}
-                    value={form.category}
-                    onChange={(val) => setForm(p => ({ ...p, category: val }))}
-                    placeholder="-- Chọn loại --"
-                  />
+                  <input className="input" value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
+                    placeholder="Ví dụ: Máy tính, Máy in, Điện thoại..." />
                 </div>
                 <div className="field">
-                  <label>Serial Number</label>
-                  <input className="input" value={form.serialNumber} onChange={e => setForm(p => ({ ...p, serialNumber: e.target.value }))}
-                    placeholder="Số serial" />
+                  <label>Số lượng</label>
+                  <input className="input" type="number" min="1" value={form.quantity} onChange={e => setForm(p => ({ ...p, quantity: parseInt(e.target.value) || 1 }))}
+                    placeholder="Số lượng" />
                 </div>
                 <div className="field">
                   <label>Vị trí</label>
@@ -467,21 +500,20 @@ export default function QuanLyThietBi() {
                     placeholder="Phòng/Khu vực" />
                 </div>
                 <div className="field">
-                  <label>Ngày mua</label>
-                  <input className="input" type="date" value={form.purchaseDate} onChange={e => setForm(p => ({ ...p, purchaseDate: e.target.value }))} />
-                </div>
-                <div className="field">
                   <label>Trạng thái</label>
                   <AppSelect
-                    options={EQUIPMENT_STATUSES}
+                    options={[
+                      { value: 1, label: 'Hoạt động' },
+                      { value: 0, label: 'Ngưng' }
+                    ]}
                     value={form.status}
                     onChange={(val) => setForm(p => ({ ...p, status: val }))}
                   />
                 </div>
                 <div className="field" style={{ gridColumn: '1 / -1' }}>
-                  <label>Ghi chú</label>
+                  <label>Mô tả</label>
                   <textarea className="input" value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))}
-                    placeholder="Ghi chú" style={{ minHeight: 80, resize: 'vertical' }} />
+                    placeholder="Mô tả thiết bị" style={{ minHeight: 80, resize: 'vertical' }} />
                 </div>
               </div>
               {saveError && (

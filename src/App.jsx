@@ -11,6 +11,8 @@ import NhomQuyen from './pages/NhomQuyen';
 import HoSo from './pages/HoSo';
 import QuanLyThietBi from './pages/QuanLyThietBi';
 import QuanLyPhieuMuonTra from './pages/QuanLyPhieuMuonTra';
+import CauHinhMuonTra from './pages/CauHinhMuonTra';
+import DanhSachTietHoc from './pages/DanhSachTietHoc';
 
 export default function App() {
   return (
@@ -39,6 +41,8 @@ export default function App() {
             <Route path="tai-khoan/danh-sach" element={<DanhSachTaiKhoan />} />
             <Route path="tai-khoan/nhom-quyen" element={<NhomQuyen />} />
             <Route path="tai-khoan/ho-so" element={<HoSo />} />
+            <Route path="cau-hinh/muon-tra" element={<CauHinhMuonTra />} />
+            <Route path="cau-hinh/tiet-hoc" element={<DanhSachTietHoc />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/login" replace />} />

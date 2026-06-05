@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8088/api/v1';
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://113.161.103.134:8070/api/v1';
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8088/api/v1';
+// const BASE_URL = process.env.REACT_APP_API_URL || 'http://113.161.103.134:8070/api/v1';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -82,6 +82,28 @@ export const receiptService = {
   update: (receiptId, payload) => api.post(`/receipt/update/${receiptId}`, payload),
   delete: (receiptId) => api.post(`/receipt/delete/${receiptId}`),
   export: () => api.get('/receipt/export'),
+};
+
+// ---- Class period endpoints (Danh sách tiết học) ----
+export const classPeriodService = {
+  getAll: (params) => api.get('/class-period/get-all', { params }),
+  create: (payload) => api.post('/class-period/create', payload),
+  update: (id, payload) => api.post(`/class-period/update/${id}`, payload),
+  delete: (id) => api.post(`/class-period/delete/${id}`),
+};
+
+// ---- Loan config endpoints (Cấu hình mượn trả) ----
+export const loanConfigService = {
+  get: () => api.get('/loan-config/get'),
+  set: (lateThresholdMinutes) => api.post('/loan-config/set', { lateThresholdMinutes }),
+};
+
+// ---- Device endpoints (Danh sách thiết bị) ----
+export const deviceService = {
+  getAll: (params) => api.get('/device/get-all', { params }),
+  create: (payload) => api.post('/device/create', payload),
+  update: (deviceId, payload) => api.post(`/device/update/${deviceId}`, payload),
+  delete: (deviceId) => api.post(`/device/delete/${deviceId}`),
 };
 
 export default api;
