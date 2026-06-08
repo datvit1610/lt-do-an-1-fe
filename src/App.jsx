@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './components/MainLayout';
 import ChatBot from './components/ChatBot';
+import GlobalAlert from './components/GlobalAlert';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import DanhSachTaiKhoan from './pages/DanhSachTaiKhoan';
@@ -11,6 +12,7 @@ import NhomQuyen from './pages/NhomQuyen';
 import HoSo from './pages/HoSo';
 import QuanLyThietBi from './pages/QuanLyThietBi';
 import QuanLyPhieuMuonTra from './pages/QuanLyPhieuMuonTra';
+import TongHopPhieuMuonTra from './pages/TongHopPhieuMuonTra';
 import CauHinhMuonTra from './pages/CauHinhMuonTra';
 import DanhSachTietHoc from './pages/DanhSachTietHoc';
 
@@ -20,6 +22,9 @@ export default function App() {
       <BrowserRouter>
         {/* Global ChatBot - Available everywhere */}
         <ChatBot />
+
+        {/* Popup thông báo lỗi quyền truy cập (403) toàn cục */}
+        <GlobalAlert />
 
         <Routes>
           {/* Public */}
@@ -38,6 +43,7 @@ export default function App() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="thiet-bi" element={<QuanLyThietBi />} />
             <Route path="phieu-muon-tra" element={<QuanLyPhieuMuonTra />} />
+            <Route path="tong-hop-phieu-muon-tra" element={<TongHopPhieuMuonTra />} />
             <Route path="tai-khoan/danh-sach" element={<DanhSachTaiKhoan />} />
             <Route path="tai-khoan/nhom-quyen" element={<NhomQuyen />} />
             <Route path="tai-khoan/ho-so" element={<HoSo />} />

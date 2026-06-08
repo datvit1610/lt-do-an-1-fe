@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { loanConfigService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function CauHinhMuonTra() {
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('loan-config-c');
   const [value, setValue] = useState('');       // giá trị đang nhập (chuỗi để dễ validate)
   const [original, setOriginal] = useState(null); // giá trị gốc từ server
   const [loading, setLoading] = useState(true);
@@ -89,6 +92,7 @@ export default function CauHinhMuonTra() {
                     placeholder="Ví dụ: 15"
                     value={value}
                     onChange={e => setValue(e.target.value)}
+                    disabled={!canEdit}
                   />
                   <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>phút</span>
                 </div>
@@ -103,14 +107,16 @@ export default function CauHinhMuonTra() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: 10, marginTop: 20, paddingTop: 20, borderTop: '1px solid #f0f2f5' }}>
-                <button className="btn btn--primary" onClick={handleSave} disabled={saving || !dirty}>
-                  {saving ? 'Đang lưu...' : 'Lưu cấu hình'}
-                </button>
-                <button className="btn btn--outline" onClick={handleReset} disabled={saving || !dirty}>
-                  Hoàn tác
-                </button>
-              </div>
+              {canEdit && (
+                <div style={{ display: 'flex', gap: 10, marginTop: 20, paddingTop: 20, borderTop: '1px solid #f0f2f5' }}>
+                  <button className="btn btn--primary" onClick={handleSave} disabled={saving || !dirty}>
+                    {saving ? 'Đang lưu...' : 'Lưu cấu hình'}
+                  </button>
+                  <button className="btn btn--outline" onClick={handleReset} disabled={saving || !dirty}>
+                    Hoàn tác
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>

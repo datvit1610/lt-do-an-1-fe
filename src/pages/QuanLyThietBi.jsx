@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import ReactPaginate from 'react-paginate';
 import AppSelect from '../components/AppSelect';
 import { deviceService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 const EQUIPMENT_CATEGORIES = [
@@ -13,6 +14,7 @@ const EQUIPMENT_CATEGORIES = [
 ];
 
 export default function QuanLyThietBi() {
+  const { hasPermission } = useAuth();
   const [equipments, setEquipments] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -309,9 +311,11 @@ export default function QuanLyThietBi() {
           <button className="btn btn--outline" onClick={handleExportExcel}>
             <IconUpload /> Xuất Excel
           </button>
-          <button className="btn btn--primary" onClick={openAdd}>
-            <IconPlus /> Thêm thiết bị
-          </button>
+          {hasPermission('device-c') && (
+            <button className="btn btn--primary" onClick={openAdd}>
+              <IconPlus /> Thêm thiết bị
+            </button>
+          )}
         </div>
       </div>
 
@@ -414,12 +418,16 @@ export default function QuanLyThietBi() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn btn--icon" onClick={() => openEdit(eq)} title="Sửa">
-                        <IconEdit />
-                      </button>
-                      <button className="btn btn--icon btn--icon-danger" onClick={() => { setDeleteError(''); setDeleteModal(eq); }} title="Xóa">
-                        <IconTrash />
-                      </button>
+                      {hasPermission('device-u') && (
+                        <button className="btn btn--icon" onClick={() => openEdit(eq)} title="Sửa">
+                          <IconEdit />
+                        </button>
+                      )}
+                      {hasPermission('device-d') && (
+                        <button className="btn btn--icon btn--icon-danger" onClick={() => { setDeleteError(''); setDeleteModal(eq); }} title="Xóa">
+                          <IconTrash />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

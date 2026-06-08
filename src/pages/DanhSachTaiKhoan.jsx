@@ -2,10 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import ReactPaginate from 'react-paginate';
 import { roleService, userService } from '../services/api';
 import AppSelect from '../components/AppSelect';
+import { useAuth } from '../context/AuthContext';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 export default function DanhSachTaiKhoan() {
+  const { hasPermission } = useAuth();
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -222,9 +224,11 @@ export default function DanhSachTaiKhoan() {
           <p className="page-subtitle">Danh sách tài khoản, vai trò và phân quyền hệ thống.</p>
         </div>
         <div className="page-header__actions">
-          <button className="btn btn--primary" onClick={openAdd}>
-            <IconPlus /> Thêm tài khoản
-          </button>
+          {hasPermission('acc-c') && (
+            <button className="btn btn--primary" onClick={openAdd}>
+              <IconPlus /> Thêm tài khoản
+            </button>
+          )}
         </div>
       </div>
 
@@ -319,12 +323,16 @@ export default function DanhSachTaiKhoan() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn btn--icon" onClick={() => openEdit(acc)} title="Sửa">
-                        <IconEdit />
-                      </button>
-                      <button className="btn btn--icon btn--icon-danger" onClick={() => { setDeleteError(''); setDeleteModal(acc); }} title="Xóa">
-                        <IconTrash />
-                      </button>
+                      {hasPermission('acc-u') && (
+                        <button className="btn btn--icon" onClick={() => openEdit(acc)} title="Sửa">
+                          <IconEdit />
+                        </button>
+                      )}
+                      {hasPermission('acc-d') && (
+                        <button className="btn btn--icon btn--icon-danger" onClick={() => { setDeleteError(''); setDeleteModal(acc); }} title="Xóa">
+                          <IconTrash />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

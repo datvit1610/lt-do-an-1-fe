@@ -4,7 +4,7 @@ import Select from 'react-select';
 const HUST_RED = '#c8102e';
 
 /* Style react-select theo tông màu HUST, đồng bộ với .input/.select */
-const styles = {
+export const selectStyles = {
   control: (base, state) => ({
     ...base,
     minHeight: 40,
@@ -65,7 +65,7 @@ export default function AppSelect({ options = [], value, onChange, placeholder =
       isSearchable={isSearchable}
       isDisabled={isDisabled}
       isClearable={isClearable}
-      styles={styles}
+      styles={selectStyles}
       classNamePrefix="appselect"
       menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
       menuPosition="fixed"

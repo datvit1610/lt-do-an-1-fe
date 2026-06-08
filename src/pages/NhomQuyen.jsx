@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { permissionService, roleService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 /* groupId enum → tên nhóm hiển thị */
 const GROUP_NAMES = {
@@ -37,6 +38,7 @@ function mapRole(r) {
 }
 
 export default function NhomQuyen() {
+  const { hasPermission } = useAuth();
   const [groups, setGroups] = useState([]);
   const [selected, setSelected] = useState(null);
   const [editName, setEditName] = useState('');
@@ -237,9 +239,11 @@ export default function NhomQuyen() {
         <div className="card">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 16px 12px' }}>
             <span style={{ fontWeight: 700, color: '#1a1f2e' }}>Nhóm quyền ({groups.length})</span>
-            <button className="btn btn--primary btn--sm" onClick={openAddModal}>
-              <IconPlus /> Thêm mới
-            </button>
+            {hasPermission('role-c') && (
+              <button className="btn btn--primary btn--sm" onClick={openAddModal}>
+                <IconPlus /> Thêm mới
+              </button>
+            )}
           </div>
           <div style={{ padding: '0 8px 12px' }}>
             {loadingRoles && groups.length === 0 && (
@@ -279,12 +283,16 @@ export default function NhomQuyen() {
               <input className="input" value={editName} onChange={e => setEditName(e.target.value)} style={{ maxWidth: 320 }} />
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-              <button className="btn btn--outline btn--sm" style={{ color: '#c8102e', borderColor: '#fca5a5' }} onClick={() => setDeleteModal(true)} disabled={savingEdit}>
-                Xóa nhóm
-              </button>
-              <button className="btn btn--primary btn--sm" onClick={handleSave} disabled={savingEdit}>
-                {savingEdit ? 'Đang lưu...' : 'Lưu thay đổi'}
-              </button>
+              {hasPermission('role-d') && (
+                <button className="btn btn--outline btn--sm" style={{ color: '#c8102e', borderColor: '#fca5a5' }} onClick={() => setDeleteModal(true)} disabled={savingEdit}>
+                  Xóa nhóm
+                </button>
+              )}
+              {hasPermission('role-u') && (
+                <button className="btn btn--primary btn--sm" onClick={handleSave} disabled={savingEdit}>
+                  {savingEdit ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+              )}
             </div>
           </div>
 

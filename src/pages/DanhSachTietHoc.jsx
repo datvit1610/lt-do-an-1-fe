@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import AppSelect from '../components/AppSelect';
 import { classPeriodService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const SHIFTS = [
   { value: 'SANG', label: 'Sáng' },
@@ -38,6 +39,7 @@ const shiftLabel = (s) => SHIFTS.find(x => x.value === s)?.label || s || '—';
 const emptyForm = { periodNumber: '', shift: '', startTime: '', endTime: '' };
 
 export default function DanhSachTietHoc() {
+  const { hasPermission } = useAuth();
   const [periods, setPeriods] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -172,9 +174,11 @@ export default function DanhSachTietHoc() {
           <p className="page-subtitle">Cấu hình các tiết học và khung giờ tương ứng trong hệ thống.</p>
         </div>
         <div className="page-header__actions">
-          <button className="btn btn--primary" onClick={openAdd}>
-            <IconPlus /> Thêm tiết học
-          </button>
+          {hasPermission('class-period-c') && (
+            <button className="btn btn--primary" onClick={openAdd}>
+              <IconPlus /> Thêm tiết học
+            </button>
+          )}
         </div>
       </div>
 
@@ -218,12 +222,16 @@ export default function DanhSachTietHoc() {
                   <td style={{ color: '#9ca3af', fontSize: '0.82rem' }}>{formatDateTime(p.modifiedDate)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn btn--icon" onClick={() => openEdit(p)} title="Sửa">
-                        <IconEdit />
-                      </button>
-                      <button className="btn btn--icon btn--icon-danger" onClick={() => { setDeleteError(''); setDeleteModal(p); }} title="Xóa">
-                        <IconTrash />
-                      </button>
+                      {hasPermission('class-period-u') && (
+                        <button className="btn btn--icon" onClick={() => openEdit(p)} title="Sửa">
+                          <IconEdit />
+                        </button>
+                      )}
+                      {hasPermission('class-period-d') && (
+                        <button className="btn btn--icon btn--icon-danger" onClick={() => { setDeleteError(''); setDeleteModal(p); }} title="Xóa">
+                          <IconTrash />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

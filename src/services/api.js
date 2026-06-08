@@ -16,14 +16,28 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 globally
+function notifyForbidden() {
+  // Không đủ quyền → hiển thị popup global (GlobalAlert lắng nghe event này)
+  window.dispatchEvent(new CustomEvent('app:forbidden', {
+    detail: { message: 'Không có quyền truy cập, vui lòng liên hệ Admin hệ thống.' },
+  }));
+}
+
+// Handle 401 / 403 globally
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    // BE trả HTTP 200 nhưng body có code = 403 khi không đủ quyền
+    if (res?.data?.code === 403) notifyForbidden();
+    return res;
+  },
   (err) => {
-    if (err.response?.status === 401) {
+    const status = err.response?.status;
+    if (status === 401) {
       localStorage.removeItem('hust_user');
       localStorage.removeItem('hust_token');
       window.location.href = '/login';
+    } else if (status === 403 || err.response?.data?.code === 403) {
+      notifyForbidden();
     }
     return Promise.reject(err);
   }
@@ -84,6 +98,16 @@ export const receiptService = {
   export: () => api.get('/receipt/export'),
 };
 
+// ---- Loan endpoints (Danh sách phiếu mượn) ----
+export const loanService = {
+  getAllForUser: (params) => api.get('/loan/get-all-for-user', { params }),
+  getAll: (params) => api.get('/loan/get-all', { params }),
+  create: (payload) => api.post('/loan/create', payload),
+  update: (loanId, payload) => api.post(`/loan/update/${loanId}`, payload),
+  delete: (loanId) => api.post(`/loan/delete/${loanId}`),
+  export: () => api.get('/loan/export'),
+};
+
 // ---- Class period endpoints (Danh sách tiết học) ----
 export const classPeriodService = {
   getAll: (params) => api.get('/class-period/get-all', { params }),
@@ -98,9 +122,15 @@ export const loanConfigService = {
   set: (lateThresholdMinutes) => api.post('/loan-config/set', { lateThresholdMinutes }),
 };
 
+// ---- Dashboard endpoints ----
+export const dashboardService = {
+  overview: (params) => api.get('/dashboard/overview', { params }),
+};
+
 // ---- Device endpoints (Danh sách thiết bị) ----
 export const deviceService = {
   getAll: (params) => api.get('/device/get-all', { params }),
+  select: (params) => api.get('/device/select', { params }),
   create: (payload) => api.post('/device/create', payload),
   update: (deviceId, payload) => api.post(`/device/update/${deviceId}`, payload),
   delete: (deviceId) => api.post(`/device/delete/${deviceId}`),

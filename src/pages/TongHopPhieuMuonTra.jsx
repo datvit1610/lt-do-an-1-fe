@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ReactPaginate from 'react-paginate';
 import AppSelect from '../components/AppSelect';
-import DeviceSelect from '../components/DeviceSelect';
 import { loanService } from '../services/api';
-import { useAuth } from '../context/AuthContext';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 // Trạng thái: 1 - đang mượn, 2 - đã trả, 3 - Trả chậm, 4 - Mất thiết bị
@@ -12,11 +10,6 @@ const LOAN_STATUSES = [
   { value: 2, label: 'Đã trả' },
   { value: 3, label: 'Trả chậm' },
   { value: 4, label: 'Mất thiết bị' },
-];
-// Trạng thái cập nhật trả đồ: 1 - trả đồ, 2 - mất đồ
-const RETURN_STATUSES = [
-  { value: 1, label: 'Trả đồ' },
-  { value: 2, label: 'Mất đồ' },
 ];
 
 /* Định dạng ngày giờ từ giá trị Date của backend */
@@ -30,35 +23,25 @@ function formatDateTime(val) {
   });
 }
 
-export default function QuanLyPhieuMuonTra() {
-  const { hasPermission } = useAuth();
+export default function TongHopPhieuMuonTra() {
   const [loans, setLoans] = useState([]);
   const [loading, setLoading] = useState(false);
 
   /* Bộ lọc */
   const [fLoanCode, setFLoanCode] = useState('');
+  const [fBorrowerName, setFBorrowerName] = useState('');
   const [fStatus, setFStatus] = useState('');
   const [fFromDate, setFFromDate] = useState('');
   const [fToDate, setFToDate] = useState('');
 
   /* Query đã commit */
-  const [query, setQuery] = useState({ loanCode: '', status: '', fromDate: '', toDate: '' });
+  const [query, setQuery] = useState({ loanCode: '', borrowerName: '', status: '', fromDate: '', toDate: '' });
 
   /* Phân trang */
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [pageInfo, setPageInfo] = useState({ pagesCount: 0, total: 0, currentPage: 0 });
 
-  const [modal, setModal] = useState(null);
-  const [form, setForm] = useState({
-    deviceOption: null,
-    quantity: 1,
-    borrowPeriod: '',
-    returnPeriod: '',
-    note: '',
-  });
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
   const [toast, setToast] = useState('');
 
   function showToast(msg) {
@@ -66,12 +49,13 @@ export default function QuanLyPhieuMuonTra() {
     setTimeout(() => setToast(''), 3000);
   }
 
-  /* Gọi API danh sách phiếu mượn */
+  /* Gọi API tổng hợp phiếu mượn (tất cả người dùng) */
   const fetchLoans = useCallback(async () => {
     setLoading(true);
     try {
       const params = {
         loanCode: query.loanCode || undefined,
+        borrowerName: query.borrowerName || undefined,
         status: query.status !== '' ? query.status : undefined,
         fromDate: query.fromDate || undefined,
         toDate: query.toDate || undefined,
@@ -79,7 +63,7 @@ export default function QuanLyPhieuMuonTra() {
         size: pageSize,
       };
 
-      const response = await loanService.getAllForUser(params);
+      const response = await loanService.getAll(params);
       const apiData = response.data.data; // Bóc tách object data lồng nhau
 
       const mappedData = (apiData.content || []).map(item => ({
@@ -121,6 +105,7 @@ export default function QuanLyPhieuMuonTra() {
     setPage(0);
     setQuery({
       loanCode: fLoanCode.trim(),
+      borrowerName: fBorrowerName.trim(),
       status: fStatus,
       fromDate: fFromDate,
       toDate: fToDate,
@@ -131,80 +116,9 @@ export default function QuanLyPhieuMuonTra() {
   }
 
   function clearFilters() {
-    setFLoanCode(''); setFStatus(''); setFFromDate(''); setFToDate('');
+    setFLoanCode(''); setFBorrowerName(''); setFStatus(''); setFFromDate(''); setFToDate('');
     setPage(0);
-    setQuery({ loanCode: '', status: '', fromDate: '', toDate: '' });
-  }
-
-  function openAdd() {
-    setForm({
-      deviceOption: null,
-      quantity: 1,
-      borrowPeriod: '',
-      returnPeriod: '',
-      note: '',
-    });
-    setSaveError('');
-    setModal({ mode: 'add' });
-  }
-  function openReturn(rec) {
-    setForm({ id: rec.id, status: 1, note: '' });
-    setSaveError('');
-    setModal({ mode: 'return', data: rec });
-  }
-
-  async function handleSave() {
-    setSaveError('');
-
-    if (modal.mode === 'add') {
-      if (!form.deviceOption?.value) {
-        setSaveError('Vui lòng chọn thiết bị.');
-        return;
-      }
-    } else {
-      // Cập nhật trả đồ: mất đồ bắt buộc nhập ghi chú
-      if (form.status === 2 && !form.note.trim()) {
-        setSaveError('Vui lòng nhập ghi chú khi chọn "Mất đồ".');
-        return;
-      }
-    }
-
-    setSaving(true);
-    try {
-      if (modal.mode === 'add') {
-        const payload = {
-          deviceId: form.deviceOption.value,
-          quantity: parseInt(form.quantity) || 1,
-          borrowPeriod: form.borrowPeriod !== '' ? parseInt(form.borrowPeriod) : null,
-          returnPeriod: form.returnPeriod !== '' ? parseInt(form.returnPeriod) : null,
-          note: form.note.trim(),
-        };
-        const res = await loanService.create(payload);
-        const body = res?.data;
-        if (body && (body.success === false || body.code >= 400)) {
-          setSaveError(body.message || 'Có lỗi xảy ra.');
-          return;
-        }
-      } else {
-        const payload = {
-          status: form.status,
-          note: form.note.trim(),
-        };
-        const res = await loanService.update(form.id, payload);
-        const body = res?.data;
-        if (body && (body.success === false || body.code >= 400)) {
-          setSaveError(body.message || 'Có lỗi xảy ra.');
-          return;
-        }
-      }
-      setModal(null);
-      fetchLoans();
-      showToast(modal.mode === 'add' ? 'Tạo phiếu mượn thành công.' : 'Cập nhật trả đồ thành công.');
-    } catch (err) {
-      setSaveError(err.response?.data?.message || err.message || 'Có lỗi xảy ra.');
-    } finally {
-      setSaving(false);
-    }
+    setQuery({ loanCode: '', borrowerName: '', status: '', fromDate: '', toDate: '' });
   }
 
   /* Export Excel */
@@ -235,12 +149,12 @@ export default function QuanLyPhieuMuonTra() {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `danh-sach-phieu-muon-${new Date().getTime()}.csv`;
+    link.download = `tong-hop-phieu-muon-${new Date().getTime()}.csv`;
     link.click();
     showToast('Xuất dữ liệu thành công.');
   }
 
-  const COL_COUNT = 15;
+  const COL_COUNT = 14;
   const getStatusBadgeColor = (status) => {
     const statusMap = {
       1: 'badge--blue',   // Đang mượn
@@ -254,8 +168,6 @@ export default function QuanLyPhieuMuonTra() {
     return LOAN_STATUSES.find(s => s.value === status)?.label || status;
   };
   const isLate = (rec) => rec.status === 3 || rec.status === 4;
-  // Chỉ cho cập nhật trả đồ khi phiếu còn "Chưa trả" (Đang mượn)
-  const canReturn = (rec) => rec.status === 1;
 
   return (
     <div>
@@ -275,29 +187,29 @@ export default function QuanLyPhieuMuonTra() {
       {/* Page header */}
       <div className="page-header">
         <div className="page-header__left">
-          <h1 className="page-title">Quản lý phiếu mượn trả</h1>
-          <p className="page-subtitle">Theo dõi và quản lý các phiếu mượn, trả thiết bị của hệ thống.</p>
+          <h1 className="page-title">Tổng hợp phiếu mượn trả</h1>
+          <p className="page-subtitle">Theo dõi tất cả phiếu mượn, trả thiết bị của toàn bộ người dùng trong hệ thống.</p>
         </div>
         <div className="page-header__actions">
           <button className="btn btn--outline" onClick={handleExportExcel}>
             <IconUpload /> Xuất Excel
           </button>
-          {hasPermission('loan-c') && (
-            <button className="btn btn--primary" onClick={openAdd}>
-              <IconPlus /> Tạo phiếu mượn
-            </button>
-          )}
         </div>
       </div>
 
       {/* Filter bar */}
       <div className="card" style={{ marginBottom: 20 }}>
         <div className="card__body">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 12, alignItems: 'flex-end' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: 12, alignItems: 'flex-end' }}>
             <div className="field">
               <label>Mã phiếu mượn</label>
               <input className="input" placeholder="Nhập mã phiếu..."
                 value={fLoanCode} onChange={e => setFLoanCode(e.target.value)} onKeyDown={handleFilterKeyDown} />
+            </div>
+            <div className="field">
+              <label>Tên người mượn</label>
+              <input className="input" placeholder="Nhập tên..."
+                value={fBorrowerName} onChange={e => setFBorrowerName(e.target.value)} onKeyDown={handleFilterKeyDown} />
             </div>
             <div className="field">
               <label>Trạng thái</label>
@@ -331,7 +243,7 @@ export default function QuanLyPhieuMuonTra() {
       {/* Table */}
       <div className="card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px 0' }}>
-          <span style={{ fontWeight: 700, color: '#1a1f2e' }}>Phiếu mượn trả ({pageInfo.total})</span>
+          <span style={{ fontWeight: 700, color: '#1a1f2e' }}>Tổng hợp phiếu mượn trả ({pageInfo.total})</span>
         </div>
         <div className="card__body tbl-wrap" style={{ paddingTop: 12 }}>
           <table className="tbl tbl--nowrap">
@@ -351,7 +263,6 @@ export default function QuanLyPhieuMuonTra() {
                 <th>Trả chậm (phút)</th>
                 <th>Ghi chú</th>
                 <th>Ngày cập nhật</th>
-                <th>Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -385,21 +296,6 @@ export default function QuanLyPhieuMuonTra() {
                     {rec.note || '—'}
                   </td>
                   <td style={{ color: '#9ca3af', fontSize: '0.82rem' }}>{formatDateTime(rec.modifiedDate)}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {hasPermission('loan-u') && (
-                        <button
-                          className="btn btn--outline btn--sm"
-                          onClick={() => openReturn(rec)}
-                          disabled={!canReturn(rec)}
-                          title={canReturn(rec) ? 'Cập nhật trả đồ' : 'Phiếu đã được xử lý'}
-                          style={!canReturn(rec) ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
-                        >
-                          <IconReturn /> Cập nhật trả đồ
-                        </button>
-                      )}
-                    </div>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -441,95 +337,10 @@ export default function QuanLyPhieuMuonTra() {
           )}
         </div>
       </div>
-
-      {/* Add / Return Modal */}
-      {modal && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
-          <div className="modal" style={{ maxWidth: modal.mode === 'add' ? 760 : 480 }}>
-            <div className="modal__head">
-              <span className="modal__title">{modal.mode === 'add' ? 'Tạo phiếu mượn' : 'Cập nhật trả đồ'}</span>
-              <button className="modal__close btn" onClick={() => setModal(null)}><IconX /></button>
-            </div>
-            <div className="modal__body">
-              {modal.mode === 'add' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px 24px' }}>
-                  <div className="field">
-                    <label>Thiết bị *</label>
-                    <DeviceSelect
-                      value={form.deviceOption}
-                      onChange={(opt) => setForm(p => ({ ...p, deviceOption: opt }))}
-                    />
-                  </div>
-                  <div className="field">
-                    <label>Số lượng</label>
-                    <input className="input" type="number" min="1" value={form.quantity} onChange={e => setForm(p => ({ ...p, quantity: parseInt(e.target.value) || 1 }))}
-                      placeholder="Số lượng" />
-                  </div>
-                  <div className="field">
-                    <label>Tiết mượn</label>
-                    <input className="input" type="number" min="1" value={form.borrowPeriod} onChange={e => setForm(p => ({ ...p, borrowPeriod: e.target.value }))}
-                      placeholder="Số tiết" />
-                  </div>
-                  <div className="field">
-                    <label>Tiết trả</label>
-                    <input className="input" type="number" min="1" value={form.returnPeriod} onChange={e => setForm(p => ({ ...p, returnPeriod: e.target.value }))}
-                      placeholder="Số tiết" />
-                  </div>
-                  <div className="field" style={{ gridColumn: '1 / -1' }}>
-                    <label>Ghi chú</label>
-                    <textarea className="input" value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))}
-                      placeholder="Ghi chú" style={{ minHeight: 80, resize: 'vertical' }} />
-                  </div>
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18 }}>
-                  {modal.data && (
-                    <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                      Phiếu mượn: <strong style={{ color: '#1a1f2e' }}>{modal.data.loanCode}</strong>
-                      {modal.data.itemName ? ` — ${modal.data.itemName}` : ''}
-                    </div>
-                  )}
-                  <div className="field">
-                    <label>Trạng thái trả *</label>
-                    <AppSelect
-                      options={RETURN_STATUSES}
-                      value={form.status}
-                      onChange={(val) => setForm(p => ({ ...p, status: val }))}
-                    />
-                  </div>
-                  <div className="field">
-                    <label>
-                      Ghi chú {form.status === 2 && <span style={{ color: '#c8102e' }}>*</span>}
-                    </label>
-                    <textarea className="input" value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))}
-                      placeholder={form.status === 2 ? 'Bắt buộc nhập lý do mất đồ...' : 'Ghi chú (không bắt buộc)'}
-                      style={{ minHeight: 80, resize: 'vertical' }} />
-                  </div>
-                </div>
-              )}
-              {saveError && (
-                <div style={{ marginTop: 14, padding: '10px 14px', background: '#fff0f2', border: '1px solid #fca5a5', borderRadius: 8, color: '#c8102e', fontSize: '0.84rem' }}>
-                  {saveError}
-                </div>
-              )}
-            </div>
-            <div className="modal__footer">
-              <button className="btn btn--outline" onClick={() => setModal(null)} disabled={saving}>Hủy</button>
-              <button className="btn btn--primary" onClick={handleSave} disabled={saving}>
-                {saving ? 'Đang lưu...' : (modal.mode === 'add' ? 'Tạo phiếu' : 'Cập nhật')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
 
 // Icons
-function IconPlus() { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>; }
 function IconSearch() { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>; }
-function IconReturn() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>; }
 function IconUpload() { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>; }
-function IconX() { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>; }

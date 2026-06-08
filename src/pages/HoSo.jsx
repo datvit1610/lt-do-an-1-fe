@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/api';
 
 export default function HoSo() {
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const navigate = useNavigate();
   const [pwModal, setPwModal] = useState(false);
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
@@ -74,9 +74,11 @@ export default function HoSo() {
                 <div style={{ fontSize: '0.85rem', color: '#9ca3af', marginTop: 2 }}>{profile.role}</div>
               </div>
             </div>
-            <button className="btn btn--outline" onClick={() => setPwModal(true)}>
-              <IconKey /> Đổi mật khẩu
-            </button>
+            {hasPermission('change-pass') && (
+              <button className="btn btn--outline" onClick={() => setPwModal(true)}>
+                <IconKey /> Đổi mật khẩu
+              </button>
+            )}
           </div>
 
           {/* Info grid */}

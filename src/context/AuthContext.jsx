@@ -1,7 +1,17 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { authService } from '../services/api';
 
 const AuthContext = createContext(null);
+
+/* Lấy danh sách tên quyền (permission name) từ user, hỗ trợ nhiều dạng dữ liệu */
+function extractPermissionNames(user) {
+  if (!user) return [];
+  const fromRole = user.roleInfo?.permissions;
+  if (Array.isArray(fromRole)) return fromRole.map(p => p?.name).filter(Boolean);
+  const flat = user.permissions;
+  if (Array.isArray(flat)) return flat.map(p => (typeof p === 'string' ? p : p?.name)).filter(Boolean);
+  return [];
+}
 
 function decodeJwt(token) {
   if (!token) return null;
@@ -76,8 +86,14 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('hust_refresh_token');
   }, []);
 
+  const permissions = useMemo(() => extractPermissionNames(user), [user]);
+  const hasPermission = useCallback((name) => {
+    if (!name) return true; // không yêu cầu quyền cụ thể
+    return permissions.includes(name);
+  }, [permissions]);
+
   return (
-    <AuthContext.Provider value={{ user, token, refreshToken, login, logout, refreshProfile, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, token, refreshToken, login, logout, refreshProfile, isAuthenticated: !!user, permissions, hasPermission }}>
       {children}
     </AuthContext.Provider>
   );

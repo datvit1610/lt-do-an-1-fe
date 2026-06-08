@@ -8,38 +8,44 @@ const NAV = [
   {
     group: 'TỔNG QUAN',
     items: [
-      { to: '/dashboard', label: 'Dashboard', icon: IconDashboard },
+      { to: '/dashboard', label: 'Dashboard', icon: IconDashboard, perm: 'das-v' },
     ],
   },
   {
     group: 'QUẢN LÝ',
     items: [
-      { to: '/thiet-bi', label: 'Quản lý thiết bị', icon: IconBox },
-      { to: '/phieu-muon-tra', label: 'Phiếu mượn trả', icon: IconClipboard },
+      { to: '/thiet-bi', label: 'Quản lý thiết bị', icon: IconBox, perm: 'device-v' },
+      { to: '/phieu-muon-tra', label: 'Phiếu mượn trả', icon: IconClipboard, perm: 'loan-v-user' },
+      { to: '/tong-hop-phieu-muon-tra', label: 'Tổng hợp phiếu mượn trả', icon: IconClipboard, perm: 'loan-v-admin' },
     ],
   },
   {
     group: 'HỆ THỐNG',
     items: [
-      { to: '/tai-khoan/danh-sach', label: 'Danh sách tài khoản', icon: IconUsers },
-      { to: '/tai-khoan/nhom-quyen', label: 'Nhóm quyền', icon: IconShield },
-      { to: '/tai-khoan/ho-so', label: 'Thông tin tài khoản', icon: IconUser },
+      { to: '/tai-khoan/danh-sach', label: 'Danh sách tài khoản', icon: IconUsers, perm: 'acc-v' },
+      { to: '/tai-khoan/nhom-quyen', label: 'Nhóm quyền', icon: IconShield, perm: 'role-v' },
+      { to: '/tai-khoan/ho-so', label: 'Thông tin tài khoản', icon: IconUser }, // luôn hiển thị (hồ sơ cá nhân)
     ],
   },
   {
     group: 'CẤU HÌNH HỆ THỐNG',
     items: [
-      { to: '/cau-hinh/muon-tra', label: 'Cấu hình mượn trả', icon: IconSettings },
-      { to: '/cau-hinh/tiet-hoc', label: 'Danh sách tiết học', icon: IconClock },
+      { to: '/cau-hinh/muon-tra', label: 'Cấu hình mượn trả', icon: IconSettings, perm: 'loan-config-v' },
+      { to: '/cau-hinh/tiet-hoc', label: 'Danh sách tiết học', icon: IconClock, perm: 'class-period-v' },
     ],
   },
 ];
 
 export default function MainLayout() {
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Lọc menu theo quyền: ẩn item không có quyền, ẩn luôn section nếu trống
+  const visibleNav = NAV
+    .map(section => ({ ...section, items: section.items.filter(item => hasPermission(item.perm)) }))
+    .filter(section => section.items.length > 0);
 
   function handleLogout() {
     logout();
@@ -67,7 +73,7 @@ export default function MainLayout() {
         </div>
 
         <nav className="sidebar__nav">
-          {NAV.map(section => (
+          {visibleNav.map(section => (
             <div key={section.group} className="sidebar__section">
               <span className="sidebar__section-label">{section.group}</span>
               {section.items.map(item => (
