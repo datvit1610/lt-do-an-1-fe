@@ -31,6 +31,7 @@ const NAV = [
     group: 'CẤU HÌNH HỆ THỐNG',
     items: [
       { to: '/cau-hinh/muon-tra', label: 'Cấu hình mượn trả', icon: IconSettings, perm: 'loan-config-v' },
+      { to: '/cau-hinh/loai-thiet-bi', label: 'Cấu hình loại thiết bị', icon: IconBox, perm: 'device-v' },
       { to: '/cau-hinh/tiet-hoc', label: 'Danh sách tiết học', icon: IconClock, perm: 'class-period-v' },
     ],
   },

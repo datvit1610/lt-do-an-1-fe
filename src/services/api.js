@@ -128,6 +128,8 @@ export const dashboardService = {
   top5Devices: (params) => api.get('/dashboard/top5-devices', { params }),
   loanStatusStats: (params) => api.get('/dashboard/loan-status-stats', { params }),
   loanTrend: (params) => api.get('/dashboard/loan-trend', { params }),
+  deviceTypeStats: (params) => api.get('/dashboard/device-type-stats', { params }),
+  topBorrowers: (params) => api.get('/dashboard/top-borrowers', { params }),
 };
 
 // ---- Device endpoints (Danh sách thiết bị) ----
@@ -137,6 +139,15 @@ export const deviceService = {
   create: (payload) => api.post('/device/create', payload),
   update: (deviceId, payload) => api.post(`/device/update/${deviceId}`, payload),
   delete: (deviceId) => api.post(`/device/delete/${deviceId}`),
+};
+
+// ---- Device type endpoints (Cấu hình loại thiết bị) ----
+export const deviceTypeService = {
+  getAll: (params) => api.get('/device-type/get-all', { params }),
+  select: () => api.get('/device-type/select'),
+  create: (payload) => api.post('/device-type/create', payload),
+  update: (id, payload) => api.post(`/device-type/update/${id}`, payload),
+  delete: (id) => api.post(`/device-type/delete/${id}`),
 };
 
 export default api;

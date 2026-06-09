@@ -14,6 +14,7 @@ import QuanLyThietBi from './pages/QuanLyThietBi';
 import QuanLyPhieuMuonTra from './pages/QuanLyPhieuMuonTra';
 import TongHopPhieuMuonTra from './pages/TongHopPhieuMuonTra';
 import CauHinhMuonTra from './pages/CauHinhMuonTra';
+import CauHinhLoaiThietBi from './pages/CauHinhLoaiThietBi';
 import DanhSachTietHoc from './pages/DanhSachTietHoc';
 
 export default function App() {
@@ -48,6 +49,7 @@ export default function App() {
             <Route path="tai-khoan/nhom-quyen" element={<NhomQuyen />} />
             <Route path="tai-khoan/ho-so" element={<HoSo />} />
             <Route path="cau-hinh/muon-tra" element={<CauHinhMuonTra />} />
+            <Route path="cau-hinh/loai-thiet-bi" element={<CauHinhLoaiThietBi />} />
             <Route path="cau-hinh/tiet-hoc" element={<DanhSachTietHoc />} />
           </Route>
 

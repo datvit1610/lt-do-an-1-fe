@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ReactPaginate from 'react-paginate';
 import AppSelect from '../components/AppSelect';
-import { deviceService } from '../services/api';
+import { deviceService, deviceTypeService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -17,6 +17,17 @@ export default function QuanLyThietBi() {
   const { hasPermission } = useAuth();
   const [equipments, setEquipments] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  /* Danh sách loại thiết bị (dropdown filter & form) — value = tên loại */
+  const [deviceTypeOptions, setDeviceTypeOptions] = useState([]);
+  useEffect(() => {
+    deviceTypeService.select()
+      .then(res => {
+        const list = res.data?.data || [];
+        setDeviceTypeOptions(list.map(t => ({ value: t.deviceType, label: t.deviceType })));
+      })
+      .catch(() => setDeviceTypeOptions([]));
+  }, []);
 
   /* Bộ lọc */
   const [fEquipmentName, setFEquipmentName] = useState('');
@@ -336,9 +347,10 @@ export default function QuanLyThietBi() {
             <div className="field">
               <label>Loại thiết bị</label>
               <AppSelect
-                options={[{ value: '', label: 'Tất cả' }, ...EQUIPMENT_CATEGORIES]}
+                options={[{ value: '', label: 'Tất cả' }, ...deviceTypeOptions]}
                 value={fCategory}
                 onChange={(val) => setFCategory(val || '')}
+                isSearchable
                 isClearable
               />
             </div>
@@ -494,8 +506,13 @@ export default function QuanLyThietBi() {
                 </div>
                 <div className="field">
                   <label>Loại thiết bị *</label>
-                  <input className="input" value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
-                    placeholder="Ví dụ: Máy tính, Máy in, Điện thoại..." />
+                  <AppSelect
+                    options={deviceTypeOptions}
+                    value={form.category}
+                    onChange={(val) => setForm(p => ({ ...p, category: val || '' }))}
+                    placeholder="-- Chọn loại thiết bị --"
+                    isSearchable
+                  />
                 </div>
                 <div className="field">
                   <label>Số lượng</label>

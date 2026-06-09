@@ -21,44 +21,13 @@ function ymdFromApi(val, fallback) {
 }
 
 /* ── Mock data cho hệ thống quản lý thiết bị ── */
-const RECENT_RECEIPTS = [
-  { receiptCode: 'PMT001', borrower: 'Nguyễn Văn A', equipment: 'Máy tính', borrowDate: '27/05/2026', returnDate: '03/06/2026', status: 'ĐÃ_TRẢ', daysLeft: -1 },
-  { receiptCode: 'PMT002', borrower: 'Trần Thị B', equipment: 'Máy in HP', borrowDate: '25/05/2026', returnDate: '01/06/2026', status: 'ĐANG_MƯỢN', daysLeft: 5 },
-  { receiptCode: 'PMT003', borrower: 'Lê Văn C', equipment: 'Điện thoại', borrowDate: '20/05/2026', returnDate: '27/05/2026', status: 'CHẬM_TRẢ', daysLeft: -3 },
-  { receiptCode: 'PMT004', borrower: 'Phạm Thị D', equipment: 'Tủ tài liệu', borrowDate: '28/05/2026', returnDate: '04/06/2026', status: 'ĐANG_MƯỢN', daysLeft: 3 },
-  { receiptCode: 'PMT005', borrower: 'Hoàng Văn E', equipment: 'Máy tính xách tay', borrowDate: '26/05/2026', returnDate: '02/06/2026', status: 'ĐANG_MƯỢN', daysLeft: 4 },
-];
-
-const OVERDUE_EQUIPMENT = [
-  { receiptCode: 'PMT003', equipment: 'Điện thoại', borrower: 'Lê Văn C', overdueDays: 3, expectedReturn: '27/05/2026' },
-  { receiptCode: 'PMT006', equipment: 'Máy tính', borrower: 'Hoàng Văn F', overdueDays: 1, expectedReturn: '28/05/2026' },
-  { receiptCode: 'PMT007', equipment: 'Máy in', borrower: 'Ngô Thị G', overdueDays: 5, expectedReturn: '24/05/2026' },
-];
-
-const ACTIVITY_LOG = [
-  { time: '27/05/2026 14:30', user: 'Admin', action: 'Tạo thiết bị', target: 'Máy tính Dell', type: 'create' },
-  { time: '26/05/2026 10:15', user: 'Phạm Thị D', action: 'Mượn thiết bị', target: 'Tủ tài liệu', type: 'borrow' },
-  { time: '25/05/2026 16:45', user: 'Trần Thị B', action: 'Trả thiết bị', target: 'Máy in HP', type: 'return' },
-  { time: '24/05/2026 11:20', user: 'Admin', action: 'Cập nhật trạng thái', target: 'Máy tính #TB028', type: 'update' },
-  { time: '23/05/2026 09:00', user: 'Admin', action: 'Nhập thiết bị từ Excel', target: '10 thiết bị', type: 'import' },
-];
-
-const ACTIVITY_COLOR = {
-  create: '#059669',
-  borrow: '#2563eb',
-  return: '#8b5cf6',
-  update: '#d97706',
-  import: '#c8102e',
-  warning: '#dc2626',
-};
-
 function DonutChart({ data, unit = 'thiết bị' }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
   const total = data.reduce((s, item) => s + item.count, 0);
-  const radius = 75;
-  const cx = 100, cy = 100;
+  const radius = 100;
+  const cx = 120, cy = 120;
 
   let currentAngle = -90;
 
@@ -90,7 +59,7 @@ function DonutChart({ data, unit = 'thiết bị' }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20, position: 'relative' }}>
-        <svg width="220" height="220" style={{ maxWidth: '100%' }}>
+        <svg width="240" height="240" style={{ maxWidth: '100%' }}>
           {segments.map((seg, idx) => (
             <path
               key={idx}
@@ -328,6 +297,77 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchTrend(); }, [fetchTrend]);
 
+  /* ── Thống kê lượt mượn theo loại thiết bị (biểu đồ donut) ── */
+  const [deviceTypeStats, setDeviceTypeStats] = useState(null);
+  const [deviceTypeLoading, setDeviceTypeLoading] = useState(false);
+
+  const fetchDeviceTypeStats = useCallback(async () => {
+    setDeviceTypeLoading(true);
+    try {
+      const res = await dashboardService.deviceTypeStats({ fromDate: range.from, toDate: range.to });
+      setDeviceTypeStats(res.data?.data ?? null);
+    } catch (err) {
+      console.error('Fetch device type stats error:', err);
+      setDeviceTypeStats(null);
+    } finally {
+      setDeviceTypeLoading(false);
+    }
+  }, [range.from, range.to]);
+
+  useEffect(() => { fetchDeviceTypeStats(); }, [fetchDeviceTypeStats]);
+
+  /* ── Top người mượn nhiều nhất (bảng xếp hạng) ── */
+  const [borrowerRole, setBorrowerRole] = useState(''); // '' = Tất cả | 'Sinh viên' | 'Giảng viên'
+  const [topBorrowers, setTopBorrowers] = useState([]);
+  const [borrowersLoading, setBorrowersLoading] = useState(false);
+
+  const fetchTopBorrowers = useCallback(async () => {
+    setBorrowersLoading(true);
+    try {
+      const res = await dashboardService.topBorrowers({
+        fromDate: range.from,
+        toDate: range.to,
+        roleName: borrowerRole || undefined,
+      });
+      const data = res.data?.data ?? [];
+      setTopBorrowers(Array.isArray(data) ? data : (data.content || []));
+    } catch (err) {
+      console.error('Fetch top borrowers error:', err);
+      setTopBorrowers([]);
+    } finally {
+      setBorrowersLoading(false);
+    }
+  }, [range.from, range.to, borrowerRole]);
+
+  useEffect(() => { fetchTopBorrowers(); }, [fetchTopBorrowers]);
+
+  const BORROWER_ROLES = [
+    { value: '', label: 'Tất cả' },
+    { value: 'Sinh viên', label: 'Sinh viên' },
+    { value: 'Giảng viên', label: 'Giảng viên' },
+  ];
+  const AVATAR_COLORS = ['#fecdd3', '#bfdbfe', '#bbf7d0', '#fde68a', '#ddd6fe', '#fbcfe8', '#a5f3fc', '#fed7aa'];
+  const borrowerRows = (topBorrowers || []).map(b => ({
+    id: b.borrowerId,
+    name: b.fullName || '—',
+    role: b.roleName || '',
+    count: Number(b.totalLoans ?? 0),
+  }));
+  const borrowerMax = Math.max(1, ...borrowerRows.map(r => r.count));
+  const borrowerTop = borrowerRows[0] || null;
+  const borrowerAvg = borrowerRows.length
+    ? Math.round(borrowerRows.reduce((s, r) => s + r.count, 0) / borrowerRows.length)
+    : 0;
+  const initialsOf = (name) => (name || '?').trim().split(/\s+/).slice(-2).map(w => w[0]).join('').toUpperCase();
+
+  const DEVICE_TYPE_COLORS = ['#c8102e', '#2563eb', '#059669', '#d97706', '#9333ea', '#0891b2', '#ec4899', '#6b7280'];
+  const deviceTypeData = (deviceTypeStats?.data ?? []).map((d, i) => ({
+    name: d.deviceType || '—',
+    count: Number(d.totalLoans ?? 0),
+    color: DEVICE_TYPE_COLORS[i % DEVICE_TYPE_COLORS.length],
+  }));
+  const deviceTypeTotal = Number(deviceTypeStats?.total ?? deviceTypeData.reduce((s, d) => s + d.count, 0));
+
   const trendPoints = trend?.data ?? [];
   const TREND_GROUPS = [
     { value: 'DAY', label: 'Ngày' },
@@ -559,151 +599,104 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Row 3: Phiếu mượn trả gần đây + Thiết bị quá hạn ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 20 }}>
+      {/* ── Hàng dưới: Loại thiết bị (donut) + chỗ trống chờ biểu đồ sau ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
 
-        {/* Phiếu mượn trả gần đây */}
-        <div
-          className="card"
-          style={{
-            animation: `slideInUp 0.5s ease both`,
-            animationDelay: `0.82s`
-          }}
-        >
-          <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid #f0f2f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontWeight: 700, color: '#1a1f2e' }}>Phiếu mượn trả gần đây</span>
-            <a href="/phieu-muon-tra" style={{ fontSize: '0.8rem', color: '#c8102e', fontWeight: 600, textDecoration: 'none' }}>Xem tất cả →</a>
+        {/* Thống kê lượt mượn theo loại thiết bị */}
+        <div className="card" style={{ animation: 'slideInUp 0.5s ease both', animationDelay: '0.9s' }}>
+          <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid #f0f2f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <span style={{ fontWeight: 700, color: '#1a1f2e' }}>Lượt mượn theo loại thiết bị</span>
+            {deviceTypeStats?.mostPopularType && (
+              <span style={{ fontSize: '0.78rem', color: '#9ca3af' }}>
+                Nhiều nhất: <strong style={{ color: '#c8102e' }}>{deviceTypeStats.mostPopularType}</strong>
+              </span>
+            )}
           </div>
-          <div className="tbl-wrap">
-            <table className="tbl" style={{ fontSize: '0.85rem' }}>
-              <thead>
-                <tr>
-                  <th>Mã phiếu</th>
-                  <th>Người mượn</th>
-                  <th>Thiết bị</th>
-                  <th>Ngày mượn</th>
-                  <th>Dự trả</th>
-                  <th>Trạng thái</th>
-                </tr>
-              </thead>
-              <tbody>
-                {RECENT_RECEIPTS.map(rec => {
-                  const statusColors = {
-                    'ĐÃ_TRẢ': { class: 'badge--green', label: 'Đã trả' },
-                    'ĐANG_MƯỢN': { class: 'badge--blue', label: 'Đang mượn' },
-                    'CHẬM_TRẢ': { class: 'badge--red', label: 'Chậm trả' },
-                    'MẤT_THIẾT_BỊ': { class: 'badge--red', label: 'Mất thiết bị' },
-                  };
-                  const status = statusColors[rec.status] || { class: 'badge--gray', label: rec.status };
-                  return (
-                    <tr key={rec.receiptCode}>
-                      <td><strong>{rec.receiptCode}</strong></td>
-                      <td style={{ color: '#6b7280' }}>{rec.borrower}</td>
-                      <td style={{ color: '#6b7280' }}>{rec.equipment}</td>
-                      <td style={{ color: '#9ca3af', fontSize: '0.8rem' }}>{rec.borrowDate}</td>
-                      <td style={{ color: rec.daysLeft < 0 ? '#dc2626' : '#9ca3af', fontSize: '0.8rem', fontWeight: rec.daysLeft < 0 ? 600 : 400 }}>
-                        {rec.returnDate} {rec.daysLeft < 0 && <span title="Quá hạn">⚠️</span>}
-                      </td>
-                      <td>
-                        <span className={`badge ${status.class}`}>{status.label}</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="card__body">
+            {deviceTypeLoading ? (
+              <div style={{ padding: '40px 0', textAlign: 'center', color: '#9ca3af' }}>Đang tải...</div>
+            ) : deviceTypeTotal === 0 ? (
+              <div style={{ padding: '40px 0', textAlign: 'center', color: '#9ca3af' }}>Không có dữ liệu trong khoảng thời gian này</div>
+            ) : (
+              <DonutChart data={deviceTypeData.filter(d => d.count > 0)} unit="lượt" />
+            )}
           </div>
         </div>
 
-        {/* Thiết bị quá hạn */}
-        <div
-          className="card"
-          style={{
-            animation: `slideInUp 0.5s ease both`,
-            animationDelay: `0.9s`
-          }}
-        >
-          <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid #f0f2f5', fontWeight: 700, color: '#1a1f2e' }}>
-            ⚠️ Quá hạn chưa trả
+        {/* Top người mượn nhiều nhất */}
+        <div className="card" style={{ animation: 'slideInUp 0.5s ease both', animationDelay: '0.98s' }}>
+          <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid #f0f2f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ display: 'inline-flex', border: '1.5px solid #e5e7eb', borderRadius: 9, overflow: 'hidden' }}>
+              {BORROWER_ROLES.map(r => (
+                <button
+                  key={r.value || 'all'}
+                  onClick={() => setBorrowerRole(r.value)}
+                  style={{
+                    padding: '6px 14px', border: 'none', cursor: 'pointer',
+                    fontSize: '0.82rem', fontWeight: 600, fontFamily: 'var(--font-body)',
+                    background: borrowerRole === r.value ? '#c8102e' : '#fff',
+                    color: borrowerRole === r.value ? '#fff' : '#6b7280',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            <span style={{ fontSize: '0.78rem', color: '#9ca3af' }}>Top {borrowerRows.length || 10}</span>
           </div>
-          <div style={{ padding: '8px 16px 16px' }}>
-            {OVERDUE_EQUIPMENT.length === 0 ? (
-              <div style={{ padding: '20px 0', textAlign: 'center', color: '#9ca3af' }}>
-                ✓ Không có phiếu quá hạn
+
+          {/* 3 thẻ thống kê */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, padding: '14px 16px 4px' }}>
+            {[
+              { label: 'Người mượn nhiều nhất', value: borrowerTop?.name ?? '—', big: false },
+              { label: 'Lượt mượn cao nhất', value: borrowerTop ? borrowerTop.count : '—', big: true },
+              { label: 'Trung bình top', value: borrowerRows.length ? borrowerAvg : '—', big: true },
+            ].map(s => (
+              <div key={s.label} style={{ background: '#f9fafb', borderRadius: 10, padding: '10px 12px' }}>
+                <div style={{ fontSize: '0.72rem', color: '#9ca3af', fontWeight: 600, marginBottom: 4 }}>{s.label}</div>
+                <div style={{ fontSize: s.big ? '1.4rem' : '0.95rem', fontWeight: 800, color: '#1a1f2e', lineHeight: 1.15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(s.value)}>
+                  {borrowersLoading ? '…' : s.value}
+                </div>
               </div>
+            ))}
+          </div>
+
+          {/* Bảng xếp hạng */}
+          <div style={{ padding: '8px 16px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {borrowersLoading ? (
+              <div style={{ padding: '30px 0', textAlign: 'center', color: '#9ca3af' }}>Đang tải...</div>
+            ) : borrowerRows.length === 0 ? (
+              <div style={{ padding: '30px 0', textAlign: 'center', color: '#9ca3af' }}>Không có dữ liệu trong khoảng thời gian này</div>
             ) : (
-              OVERDUE_EQUIPMENT.map((item, i) => (
-                <div key={item.receiptCode} style={{
-                  padding: '12px 0',
-                  borderBottom: i < OVERDUE_EQUIPMENT.length - 1 ? '1px solid #f8f9fb' : 'none',
+              borrowerRows.map((r, idx) => (
+                <div key={r.id || idx} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '8px 12px', border: '1px solid #f0f2f5', borderRadius: 10,
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                    <div style={{
-                      width: 28, height: 28, borderRadius: '50%',
-                      background: '#fecaca', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0, fontSize: '0.9rem', fontWeight: 700, color: '#dc2626'
-                    }}>
-                      {item.overdueDays}
+                  <span style={{ width: 18, textAlign: 'center', fontWeight: 700, fontSize: '0.85rem', color: idx < 3 ? '#c8102e' : '#9ca3af', flexShrink: 0 }}>{idx + 1}</span>
+                  <div style={{
+                    width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                    background: AVATAR_COLORS[idx % AVATAR_COLORS.length],
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.78rem', fontWeight: 700, color: '#374151',
+                  }}>{initialsOf(r.name)}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.86rem', fontWeight: 600, color: '#1a1f2e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
+                    <div style={{ fontSize: '0.74rem', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {r.role}
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.84rem', fontWeight: 600, color: '#1a1f2e' }}>
-                        {item.equipment}
-                      </div>
-                      <div style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: 2 }}>
-                        {item.borrower}
-                      </div>
-                      <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: 1 }}>
-                        Dự trả: {item.expectedReturn}
-                      </div>
-                    </div>
+                  </div>
+                  <div style={{ width: 70, height: 7, background: '#f0f2f5', borderRadius: 99, overflow: 'hidden', flexShrink: 0 }}>
+                    <div style={{ height: '100%', width: `${(r.count / borrowerMax) * 100}%`, background: '#c8102e', borderRadius: 99, transition: 'width 0.6s ease' }} />
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 36 }}>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#1a1f2e', lineHeight: 1 }}>{r.count}</div>
+                    <div style={{ fontSize: '0.66rem', color: '#9ca3af' }}>lượt</div>
                   </div>
                 </div>
               ))
             )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Row 4: Activity log ── */}
-      <div
-        className="card"
-        style={{
-          animation: `slideInUp 0.5s ease both`,
-          animationDelay: `0.98s`
-        }}
-      >
-        <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid #f0f2f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontWeight: 700, color: '#1a1f2e' }}>Hoạt động gần đây</span>
-          <a href="/tai-khoan/danh-sach" style={{ fontSize: '0.8rem', color: '#c8102e', fontWeight: 600, textDecoration: 'none' }}>Xem tất cả →</a>
-        </div>
-        <div style={{ padding: '12px 20px 16px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
-            {ACTIVITY_LOG.map((a, i) => (
-              <div key={i} style={{
-                padding: '12px 14px', background: '#f9fafb', borderRadius: 10,
-                borderLeft: `3px solid ${ACTIVITY_COLOR[a.type]}`,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: 8,
-                    background: ACTIVITY_COLOR[a.type] + '15', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
-                  }}>
-                    <div style={{
-                      width: 8, height: 8, borderRadius: '50%',
-                      background: ACTIVITY_COLOR[a.type],
-                    }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.84rem', color: '#374151' }}>
-                      <strong>{a.user}</strong> {a.action.toLowerCase()}{' '}
-                      <strong style={{ color: ACTIVITY_COLOR[a.type] }}>{a.target}</strong>
-                    </div>
-                    <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: 2 }}>{a.time}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </div>
