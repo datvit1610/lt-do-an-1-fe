@@ -1,34 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { dashboardService } from '../services/api';
+
+/* Format Date → 'YYYY-MM-DD' để gắn vào input[type=date] và gửi API */
+function toYmd(d) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+/* Khoảng mặc định: 1 tháng trước → hôm nay */
+function defaultRange() {
+  const to = new Date();
+  const from = new Date();
+  from.setMonth(from.getMonth() - 1);
+  return { from: toYmd(from), to: toYmd(to) };
+}
+/* Format giá trị Date từ BE → 'YYYY-MM-DD' (fallback: chuỗi gốc) */
+function ymdFromApi(val, fallback) {
+  if (!val) return fallback;
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? fallback : toYmd(d);
+}
 
 /* ── Mock data cho hệ thống quản lý thiết bị ── */
-const EQUIPMENT_STATS = [
-  { label: 'Tổng thiết bị', value: 156, sub: '+5 tháng này', icon: '📦', color: '#c8102e', bg: '#fff0f2' },
-  { label: 'Hoạt động', value: 142, sub: '91% tổng số', icon: '✅', color: '#059669', bg: '#ecfdf5' },
-  { label: 'Đang mượn', value: 38, sub: 'chờ trả lại', icon: '🔄', color: '#2563eb', bg: '#eff6ff' },
-  { label: 'Cần bảo trì', value: 14, sub: 'hư hỏng/quá hạn', icon: '⚠️', color: '#d97706', bg: '#fffbeb' },
-];
-
-const EQUIPMENT_STATUS = [
-  { name: 'Hoạt động', count: 142, color: '#059669' },
-  { name: 'Đang mượn', count: 38, color: '#2563eb' },
-  { name: 'Hư hỏng', count: 8, color: '#c8102e' },
-  { name: 'Kỹ trục', count: 6, color: '#d97706' },
-];
-
-const EQUIPMENT_CATEGORY = [
-  { name: 'Máy tính', count: 45, color: '#3b82f6' },
-  { name: 'Điện thoại', count: 32, color: '#8b5cf6' },
-  { name: 'Máy in', count: 18, color: '#ec4899' },
-  { name: 'Tủ tài liệu', count: 28, color: '#f59e0b' },
-  { name: 'Khác', count: 33, color: '#6b7280' },
-];
-
-const BORROW_STATS = [
-  { label: 'Tổng người dùng', value: 24, icon: '👥', color: '#9333ea' },
-  { label: 'Phiếu năm nay', value: 128, icon: '📋', color: '#0891b2' },
-  { label: 'Quá hạn chưa trả', value: 7, icon: '⏰', color: '#dc2626' },
-];
-
 const RECENT_RECEIPTS = [
   { receiptCode: 'PMT001', borrower: 'Nguyễn Văn A', equipment: 'Máy tính', borrowDate: '27/05/2026', returnDate: '03/06/2026', status: 'ĐÃ_TRẢ', daysLeft: -1 },
   { receiptCode: 'PMT002', borrower: 'Trần Thị B', equipment: 'Máy in HP', borrowDate: '25/05/2026', returnDate: '01/06/2026', status: 'ĐANG_MƯỢN', daysLeft: 5 },
@@ -60,7 +52,7 @@ const ACTIVITY_COLOR = {
   warning: '#dc2626',
 };
 
-function DonutChart({ data }) {
+function DonutChart({ data, unit = 'thiết bị' }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
@@ -134,7 +126,7 @@ function DonutChart({ data }) {
           >
             <div style={{ fontWeight: 600 }}>{segments[hoveredIndex].name}</div>
             <div style={{ fontSize: '0.8rem', marginTop: 4 }}>
-              {segments[hoveredIndex].count} thiết bị · {segments[hoveredIndex].percentage}%
+              {segments[hoveredIndex].count} {unit} · {segments[hoveredIndex].percentage}%
             </div>
           </div>
         )}
@@ -155,9 +147,224 @@ function DonutChart({ data }) {
   );
 }
 
+/* Làm tròn max trục Y lên giá trị "đẹp" */
+function niceMax(m) {
+  if (m <= 5) return 5;
+  const pow = Math.pow(10, Math.floor(Math.log10(m)));
+  const r = m / pow;
+  const nice = r <= 1 ? 1 : r <= 2 ? 2 : r <= 5 ? 5 : 10;
+  return nice * pow;
+}
+
+/* Biểu đồ đường: data = [{ label, loans }] */
+function LineChart({ data, color = '#c8102e' }) {
+  const [hover, setHover] = useState(null);
+  const [tipPos, setTipPos] = useState({ x: 0, y: 0 });
+
+  const W = 760, H = 300;
+  const padL = 38, padR = 16, padT = 16, padB = 30;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+
+  const n = data.length;
+  const maxVal = Math.max(1, ...data.map(d => Number(d.loans) || 0));
+  const maxY = niceMax(maxVal);
+  const TICKS = 5;
+  const yTicks = Array.from({ length: TICKS + 1 }, (_, i) => Math.round((maxY * i) / TICKS));
+
+  const xAt = (i) => (n <= 1 ? padL + plotW / 2 : padL + (i / (n - 1)) * plotW);
+  const yAt = (v) => padT + plotH - (v / maxY) * plotH;
+
+  const pts = data.map((d, i) => ({ x: xAt(i), y: yAt(Number(d.loans) || 0), label: d.label, loans: Number(d.loans) || 0 }));
+  const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+  const areaPath = pts.length
+    ? `${linePath} L ${pts[pts.length - 1].x.toFixed(1)} ${padT + plotH} L ${pts[0].x.toFixed(1)} ${padT + plotH} Z`
+    : '';
+
+  const maxLabels = 10;
+  const labelStep = Math.max(1, Math.ceil(n / maxLabels));
+  const showDots = n <= 24;
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
+        <defs>
+          <linearGradient id="lineFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.18" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        {/* Lưới ngang + nhãn trục Y */}
+        {yTicks.map((t, i) => {
+          const y = yAt(t);
+          return (
+            <g key={i}>
+              <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="#eef0f3" strokeWidth="1" />
+              <text x={padL - 8} y={y + 3} textAnchor="end" fontSize="11" fill="#9ca3af">{t}</text>
+            </g>
+          );
+        })}
+
+        {/* Nhãn trục X */}
+        {pts.map((p, i) => (
+          (i % labelStep === 0 || i === n - 1) && (
+            <text key={i} x={p.x} y={H - 10} textAnchor="middle" fontSize="11" fill="#9ca3af">{p.label}</text>
+          )
+        ))}
+
+        {/* Vùng tô + đường */}
+        {areaPath && <path d={areaPath} fill="url(#lineFill)" />}
+        {pts.length > 1 && <path d={linePath} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />}
+
+        {/* Điểm dữ liệu */}
+        {pts.map((p, i) => (
+          <g key={i}>
+            {showDots && <circle cx={p.x} cy={p.y} r="3.5" fill="#fff" stroke={color} strokeWidth="2" />}
+            <circle
+              cx={p.x} cy={p.y} r="10" fill="transparent"
+              onMouseEnter={(e) => { setHover(i); setTipPos({ x: e.clientX, y: e.clientY }); }}
+              onMouseMove={(e) => setTipPos({ x: e.clientX, y: e.clientY })}
+              onMouseLeave={() => setHover(null)}
+              style={{ cursor: 'pointer' }}
+            />
+          </g>
+        ))}
+      </svg>
+
+      {hover !== null && pts[hover] && (
+        <div style={{
+          position: 'fixed', left: tipPos.x + 12, top: tipPos.y + 12,
+          background: '#1a1f2e', color: '#fff', padding: '8px 12px', borderRadius: 6,
+          pointerEvents: 'none', fontSize: '0.82rem', zIndex: 999, whiteSpace: 'nowrap',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+        }}>
+          <div style={{ fontWeight: 600 }}>{pts[hover].label}</div>
+          <div style={{ marginTop: 2 }}>{pts[hover].loans} lượt mượn</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 export default function DashboardPage() {
-  const totalEquipment = EQUIPMENT_STATUS.reduce((s, e) => s + e.count, 0);
-  const totalCategory = EQUIPMENT_CATEGORY.reduce((s, c) => s + c.count, 0);
+  /* ── Tổng quan hệ thống (API thật) ── */
+  const [range, setRange] = useState(defaultRange);
+  const [overview, setOverview] = useState(null);
+  const [ovLoading, setOvLoading] = useState(false);
+
+  const fetchOverview = useCallback(async () => {
+    setOvLoading(true);
+    try {
+      const res = await dashboardService.overview({ fromDate: range.from, toDate: range.to });
+      setOverview(res.data?.data ?? null);
+    } catch (err) {
+      console.error('Fetch dashboard overview error:', err);
+      setOverview(null);
+    } finally {
+      setOvLoading(false);
+    }
+  }, [range.from, range.to]);
+
+  useEffect(() => { fetchOverview(); }, [fetchOverview]);
+
+  /* ── Top 5 thiết bị được mượn nhiều nhất ── */
+  const [top5, setTop5] = useState([]);
+  const [topLoading, setTopLoading] = useState(false);
+
+  const fetchTop5 = useCallback(async () => {
+    setTopLoading(true);
+    try {
+      const res = await dashboardService.top5Devices({ fromDate: range.from, toDate: range.to });
+      const data = res.data?.data ?? [];
+      setTop5(Array.isArray(data) ? data : (data.content || []));
+    } catch (err) {
+      console.error('Fetch top5 devices error:', err);
+      setTop5([]);
+    } finally {
+      setTopLoading(false);
+    }
+  }, [range.from, range.to]);
+
+  useEffect(() => { fetchTop5(); }, [fetchTop5]);
+
+  /* ── Thống kê phiếu mượn theo trạng thái (biểu đồ tròn) ── */
+  const [loanStats, setLoanStats] = useState(null);
+  const [loanStatsLoading, setLoanStatsLoading] = useState(false);
+
+  const fetchLoanStats = useCallback(async () => {
+    setLoanStatsLoading(true);
+    try {
+      const res = await dashboardService.loanStatusStats({ fromDate: range.from, toDate: range.to });
+      setLoanStats(res.data?.data ?? null);
+    } catch (err) {
+      console.error('Fetch loan status stats error:', err);
+      setLoanStats(null);
+    } finally {
+      setLoanStatsLoading(false);
+    }
+  }, [range.from, range.to]);
+
+  useEffect(() => { fetchLoanStats(); }, [fetchLoanStats]);
+
+  /* ── Xu hướng lượt mượn theo thời gian (biểu đồ line) ── */
+  const [trendGroup, setTrendGroup] = useState('DAY'); // DAY | WEEK | MONTH
+  const [trend, setTrend] = useState(null);
+  const [trendLoading, setTrendLoading] = useState(false);
+
+  const fetchTrend = useCallback(async () => {
+    setTrendLoading(true);
+    try {
+      const res = await dashboardService.loanTrend({ fromDate: range.from, toDate: range.to, groupBy: trendGroup });
+      setTrend(res.data?.data ?? null);
+    } catch (err) {
+      console.error('Fetch loan trend error:', err);
+      setTrend(null);
+    } finally {
+      setTrendLoading(false);
+    }
+  }, [range.from, range.to, trendGroup]);
+
+  useEffect(() => { fetchTrend(); }, [fetchTrend]);
+
+  const trendPoints = trend?.data ?? [];
+  const TREND_GROUPS = [
+    { value: 'DAY', label: 'Ngày' },
+    { value: 'WEEK', label: 'Tuần' },
+    { value: 'MONTH', label: 'Tháng' },
+  ];
+
+  const loanStatusData = [
+    { name: 'Đang mượn', count: Number(loanStats?.borrowing ?? 0), color: '#2563eb' },
+    { name: 'Đã trả', count: Number(loanStats?.returned ?? 0), color: '#059669' },
+    { name: 'Trả chậm', count: Number(loanStats?.lateReturn ?? 0), color: '#d97706' },
+    { name: 'Mất thiết bị', count: Number(loanStats?.lost ?? 0), color: '#c8102e' },
+  ];
+  const loanStatusTotal = loanStatusData.reduce((s, d) => s + d.count, 0);
+
+  // Chuẩn hóa dữ liệu top5 (hỗ trợ nhiều tên field từ BE)
+  const TOP5_COLORS = ['#c8102e', '#2563eb', '#059669', '#d97706', '#9333ea'];
+  const topRows = (top5 || []).map((d, i) => ({
+    name: d.deviceName ?? d.name ?? d.itemName ?? d.deviceCode ?? '—',
+    code: d.deviceCode ?? d.itemCode ?? d.code ?? '',
+    count: Number(d.borrowCount ?? d.totalLoans ?? d.loanCount ?? d.count ?? d.total ?? 0),
+    color: TOP5_COLORS[i % TOP5_COLORS.length],
+  }));
+  const topMax = Math.max(1, ...topRows.map(r => r.count));
+
+  const fromLabel = ymdFromApi(overview?.fromDate, range.from);
+  const toLabel = ymdFromApi(overview?.toDate, range.to);
+  const fmtNum = (n) => (n == null ? '—' : Number(n).toLocaleString('vi-VN'));
+
+  const OVERVIEW_CARDS = [
+    { label: 'Đầu thiết bị', value: overview?.totalDeviceTypes, sub: 'Số loại / mã thiết bị có trong hệ thống', icon: '📚', color: '#c8102e', bg: '#fff0f2' },
+    { label: 'Tổng số lượng', value: overview?.totalDeviceQuantity, sub: 'Cộng dồn số lượng tất cả thiết bị', icon: '🧱', color: '#d97706', bg: '#fffbeb' },
+    { label: 'Lượt mượn', value: overview?.totalLoans, sub: `Từ ${fromLabel} đến ${toLabel}`, icon: '📋', color: '#059669', bg: '#ecfdf5' },
+    { label: 'Lượt mất', value: overview?.totalLost, sub: `Từ ${fromLabel} đến ${toLabel}`, icon: '⚠️', color: '#dc2626', bg: '#fef2f2' },
+    { label: 'Giảng viên', value: overview?.totalTeachers, sub: 'Tài khoản người dùng vai trò Giảng viên', icon: '🎓', color: '#2563eb', bg: '#eff6ff' },
+    { label: 'Sinh viên', value: overview?.totalStudents, sub: 'Tài khoản người dùng vai trò Sinh viên', icon: '👥', color: '#9333ea', bg: '#f5f3ff' },
+  ];
 
   return (
     <div style={{ animation: 'fadeIn 0.6s ease' }}>
@@ -172,16 +379,45 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Stat cards: Thiết bị ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
-        {EQUIPMENT_STATS.map((s, idx) => (
+      {/* ── Tổng quan hệ thống (dữ liệu thật) ── */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card__body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#1a1f2e' }}>Tổng quan hệ thống</div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+            <div className="field" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.75rem' }}>Từ ngày</label>
+              <input
+                className="input"
+                type="date"
+                value={range.from}
+                max={range.to || undefined}
+                onChange={e => setRange(p => ({ ...p, from: e.target.value }))}
+              />
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.75rem' }}>Đến ngày</label>
+              <input
+                className="input"
+                type="date"
+                value={range.to}
+                min={range.from || undefined}
+                onChange={e => setRange(p => ({ ...p, to: e.target.value }))}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Stat cards: Tổng quan ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+        {OVERVIEW_CARDS.map((s, idx) => (
           <div
             key={s.label}
             className="card"
             style={{
               borderTop: `3px solid ${s.color}`,
               animation: `slideInUp 0.5s ease both`,
-              animationDelay: `${0.1 + idx * 0.08}s`
+              animationDelay: `${0.1 + idx * 0.06}s`
             }}
           >
             <div className="card__body" style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
@@ -190,33 +426,10 @@ export default function DashboardPage() {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, marginBottom: 4 }}>{s.label}</div>
-                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#1a1f2e', lineHeight: 1 }}>{s.value}</div>
-                <div style={{ fontSize: '0.75rem', color: s.color, marginTop: 4, fontWeight: 500 }}>{s.sub}</div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Stat cards: Mượn trả ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
-        {BORROW_STATS.map((s, idx) => (
-          <div
-            key={s.label}
-            className="card"
-            style={{
-              borderTop: `3px solid ${s.color}`,
-              animation: `slideInUp 0.5s ease both`,
-              animationDelay: `${0.42 + idx * 0.08}s`
-            }}
-          >
-            <div className="card__body" style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: s.color + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', flexShrink: 0 }}>
-                {s.icon}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, marginBottom: 4 }}>{s.label}</div>
-                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#1a1f2e', lineHeight: 1 }}>{s.value}</div>
+                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#1a1f2e', lineHeight: 1 }}>
+                  {ovLoading ? '…' : fmtNum(s.value)}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 4, fontWeight: 500 }}>{s.sub}</div>
               </div>
             </div>
           </div>
@@ -226,7 +439,7 @@ export default function DashboardPage() {
       {/* ── Row 2: Trạng thái thiết bị + Loại thiết bị ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
 
-        {/* Trạng thái thiết bị */}
+        {/* Top 5 thiết bị được mượn nhiều nhất */}
         <div
           className="card"
           style={{
@@ -235,41 +448,41 @@ export default function DashboardPage() {
           }}
         >
           <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid #f0f2f5', fontWeight: 700, color: '#1a1f2e' }}>
-            Trạng thái thiết bị
+            Top 5 thiết bị được mượn nhiều nhất
           </div>
           <div className="card__body">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {EQUIPMENT_STATUS.map(e => (
-                <div key={e.name}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                    <span style={{ fontSize: '0.84rem', fontWeight: 600, color: '#374151' }}>{e.name}</span>
-                    <span style={{ fontSize: '0.84rem', color: '#9ca3af' }}>{e.count} / {totalEquipment}</span>
+            {topLoading ? (
+              <div style={{ padding: '28px 0', textAlign: 'center', color: '#9ca3af' }}>Đang tải...</div>
+            ) : topRows.length === 0 ? (
+              <div style={{ padding: '28px 0', textAlign: 'center', color: '#9ca3af' }}>Không có dữ liệu trong khoảng thời gian này</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {topRows.map((r, idx) => (
+                  <div key={r.code || r.name || idx}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5, gap: 12 }}>
+                      <span style={{ fontSize: '0.84rem', fontWeight: 600, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.code ? `${r.name} (${r.code})` : r.name}>
+                        {r.name}
+                        {r.code && <span style={{ color: '#9ca3af', fontWeight: 400, marginLeft: 6, fontSize: '0.78rem' }}>({r.code})</span>}
+                      </span>
+                      <span style={{ fontSize: '0.84rem', color: '#9ca3af', flexShrink: 0 }}>{r.count} lượt</span>
+                    </div>
+                    <div style={{ height: 8, background: '#f0f2f5', borderRadius: 99, overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${(r.count / topMax) * 100}%`,
+                        background: r.color,
+                        borderRadius: 99,
+                        transition: 'width 0.8s ease',
+                      }} />
+                    </div>
                   </div>
-                  <div style={{ height: 8, background: '#f0f2f5', borderRadius: 99, overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${(e.count / totalEquipment) * 100}%`,
-                      background: e.color,
-                      borderRadius: 99,
-                      transition: 'width 0.8s ease',
-                    }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', marginTop: 20, paddingTop: 16, borderTop: '1px solid #f0f2f5' }}>
-              {EQUIPMENT_STATUS.map(e => (
-                <div key={e.name} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: e.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>{e.name} ({e.count})</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Phân bố loại thiết bị */}
+        {/* Thống kê phiếu mượn theo trạng thái */}
         <div
           className="card"
           style={{
@@ -277,12 +490,72 @@ export default function DashboardPage() {
             animationDelay: `0.74s`
           }}
         >
-          <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid #f0f2f5', fontWeight: 700, color: '#1a1f2e' }}>
-            Phân bố loại thiết bị
+          <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid #f0f2f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontWeight: 700, color: '#1a1f2e' }}>Thống kê phiếu mượn theo trạng thái</span>
+            <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>Tổng {loanStatusTotal} phiếu</span>
           </div>
           <div className="card__body">
-            <DonutChart data={EQUIPMENT_CATEGORY} />
+            {loanStatsLoading ? (
+              <div style={{ padding: '40px 0', textAlign: 'center', color: '#9ca3af' }}>Đang tải...</div>
+            ) : loanStatusTotal === 0 ? (
+              <div style={{ padding: '40px 0', textAlign: 'center', color: '#9ca3af' }}>Không có dữ liệu trong khoảng thời gian này</div>
+            ) : (
+              <DonutChart data={loanStatusData.filter(d => d.count > 0)} unit="phiếu" />
+            )}
           </div>
+        </div>
+      </div>
+
+      {/* ── Xu hướng lượt mượn theo thời gian ── */}
+      <div className="card" style={{ marginBottom: 20, animation: 'slideInUp 0.5s ease both', animationDelay: '0.82s' }}>
+        <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid #f0f2f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <span style={{ fontWeight: 700, color: '#1a1f2e' }}>Xu hướng lượt mượn theo thời gian</span>
+          {/* Toggle Ngày / Tuần / Tháng */}
+          <div style={{ display: 'inline-flex', border: '1.5px solid #e5e7eb', borderRadius: 9, overflow: 'hidden' }}>
+            {TREND_GROUPS.map(g => (
+              <button
+                key={g.value}
+                onClick={() => setTrendGroup(g.value)}
+                style={{
+                  padding: '7px 16px', border: 'none', cursor: 'pointer',
+                  fontSize: '0.84rem', fontWeight: 600, fontFamily: 'var(--font-body)',
+                  background: trendGroup === g.value ? '#c8102e' : '#fff',
+                  color: trendGroup === g.value ? '#fff' : '#6b7280',
+                  transition: 'background 0.15s',
+                }}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 3 thẻ thống kê */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, padding: '18px 20px 4px' }}>
+          {[
+            { label: 'Tổng lượt mượn', value: trend?.total, sub: 'trong khoảng thời gian' },
+            { label: 'Cao điểm', value: trend?.peak, sub: trend?.peakLabel || '—' },
+            { label: 'Trung bình / kỳ', value: trend?.average, sub: 'lượt mượn' },
+          ].map(s => (
+            <div key={s.label} style={{ background: '#f9fafb', borderRadius: 12, padding: '14px 16px' }}>
+              <div style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, marginBottom: 4 }}>{s.label}</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1a1f2e', lineHeight: 1 }}>
+                {trendLoading ? '…' : (s.value == null ? '—' : Number(s.value).toLocaleString('vi-VN'))}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 4 }}>{s.sub}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Biểu đồ */}
+        <div className="card__body" style={{ paddingTop: 8 }}>
+          {trendLoading ? (
+            <div style={{ padding: '60px 0', textAlign: 'center', color: '#9ca3af' }}>Đang tải...</div>
+          ) : trendPoints.length === 0 ? (
+            <div style={{ padding: '60px 0', textAlign: 'center', color: '#9ca3af' }}>Không có dữ liệu trong khoảng thời gian này</div>
+          ) : (
+            <LineChart data={trendPoints} />
+          )}
         </div>
       </div>
 

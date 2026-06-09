@@ -94,6 +94,7 @@ export default function QuanLyPhieuMuonTra() {
         returnPeriod: item.returnPeriod,
         actualReturnDate: item.actualReturnDate,
         status: item.status,
+        statusSaving: item.statusSaving,
         note: item.note,
         lateMinutes: item.lateMinutes,
         createdDate: item.createdDate,
@@ -255,7 +256,7 @@ export default function QuanLyPhieuMuonTra() {
   };
   const isLate = (rec) => rec.status === 3 || rec.status === 4;
   // Chỉ cho cập nhật trả đồ khi phiếu còn "Chưa trả" (Đang mượn)
-  const canReturn = (rec) => rec.status === 1;
+  const canReturn = (rec) => rec.statusSaving === 1;
 
   return (
     <div>

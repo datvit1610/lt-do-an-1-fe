@@ -125,6 +125,9 @@ export const loanConfigService = {
 // ---- Dashboard endpoints ----
 export const dashboardService = {
   overview: (params) => api.get('/dashboard/overview', { params }),
+  top5Devices: (params) => api.get('/dashboard/top5-devices', { params }),
+  loanStatusStats: (params) => api.get('/dashboard/loan-status-stats', { params }),
+  loanTrend: (params) => api.get('/dashboard/loan-trend', { params }),
 };
 
 // ---- Device endpoints (Danh sách thiết bị) ----
