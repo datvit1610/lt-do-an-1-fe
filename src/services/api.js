@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8088/api/v1';
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://113.161.103.134:8070/api/v1';
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8088/api/v1';
+// const BASE_URL = process.env.REACT_APP_API_URL || 'http://113.161.103.134:8070/api/v1';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -105,6 +105,7 @@ export const loanService = {
   create: (payload) => api.post('/loan/create', payload),
   update: (loanId, payload) => api.post(`/loan/update/${loanId}`, payload),
   delete: (loanId) => api.post(`/loan/delete/${loanId}`),
+  approve: (loanId, approveStatus) => api.put(`/loan/${loanId}/approve`, { approveStatus }),
   export: () => api.get('/loan/export'),
 };
 

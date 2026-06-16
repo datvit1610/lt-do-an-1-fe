@@ -1,0 +1,11 @@
+﻿version: '3.8'
+
+services:
+
+  hust-ems-fe:
+    image: codechub/hust-ems-fe:1.0.0
+    build: .
+    container_name: hust-ems-fe
+    restart: always
+    ports:
+      - "8765:80"

@@ -11,6 +11,12 @@ const LOAN_STATUSES = [
   { value: 3, label: 'Trả chậm' },
   { value: 4, label: 'Mất thiết bị' },
 ];
+// Trạng thái duyệt: 0 - chờ duyệt, 1 - đã duyệt, 2 - đã hủy
+const APPROVE_STATUSES = [
+  { value: 0, label: 'Chờ duyệt' },
+  { value: 1, label: 'Đã duyệt' },
+  { value: 2, label: 'Đã hủy' },
+];
 
 /* Định dạng ngày giờ từ giá trị Date của backend */
 function formatDateTime(val) {
@@ -31,16 +37,22 @@ export default function TongHopPhieuMuonTra() {
   const [fLoanCode, setFLoanCode] = useState('');
   const [fBorrowerName, setFBorrowerName] = useState('');
   const [fStatus, setFStatus] = useState('');
+  const [fApproveStatus, setFApproveStatus] = useState('');
   const [fFromDate, setFFromDate] = useState('');
   const [fToDate, setFToDate] = useState('');
 
   /* Query đã commit */
-  const [query, setQuery] = useState({ loanCode: '', borrowerName: '', status: '', fromDate: '', toDate: '' });
+  const [query, setQuery] = useState({ loanCode: '', borrowerName: '', status: '', approveStatus: '', fromDate: '', toDate: '' });
 
   /* Phân trang */
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [pageInfo, setPageInfo] = useState({ pagesCount: 0, total: 0, currentPage: 0 });
+
+  /* Modal xác nhận duyệt/hủy: { rec, approveStatus } */
+  const [confirmModal, setConfirmModal] = useState(null);
+  const [approving, setApproving] = useState(false);
+  const [approveError, setApproveError] = useState('');
 
   const [toast, setToast] = useState('');
 
@@ -57,6 +69,7 @@ export default function TongHopPhieuMuonTra() {
         loanCode: query.loanCode || undefined,
         borrowerName: query.borrowerName || undefined,
         status: query.status !== '' ? query.status : undefined,
+        approveStatus: query.approveStatus !== '' ? query.approveStatus : undefined,
         fromDate: query.fromDate || undefined,
         toDate: query.toDate || undefined,
         page,
@@ -78,6 +91,10 @@ export default function TongHopPhieuMuonTra() {
         returnPeriod: item.returnPeriod,
         actualReturnDate: item.actualReturnDate,
         status: item.status,
+        approveStatus: (() => {
+          const v = item.approveStatus ?? item.approve_status ?? item.approvalStatus;
+          return v == null ? v : Number(v);
+        })(),
         note: item.note,
         lateMinutes: item.lateMinutes,
         createdDate: item.createdDate,
@@ -107,6 +124,7 @@ export default function TongHopPhieuMuonTra() {
       loanCode: fLoanCode.trim(),
       borrowerName: fBorrowerName.trim(),
       status: fStatus,
+      approveStatus: fApproveStatus,
       fromDate: fFromDate,
       toDate: fToDate,
     });
@@ -115,10 +133,41 @@ export default function TongHopPhieuMuonTra() {
     if (e.key === 'Enter') handleSearch();
   }
 
-  function clearFilters() {
-    setFLoanCode(''); setFBorrowerName(''); setFStatus(''); setFFromDate(''); setFToDate('');
+  /* Đổi filter trạng thái duyệt → gọi lại API ngay */
+  function handleApproveFilterChange(val) {
+    const v = val ?? '';
+    setFApproveStatus(v);
     setPage(0);
-    setQuery({ loanCode: '', borrowerName: '', status: '', fromDate: '', toDate: '' });
+    setQuery(q => ({ ...q, approveStatus: v }));
+  }
+
+  function clearFilters() {
+    setFLoanCode(''); setFBorrowerName(''); setFStatus(''); setFApproveStatus(''); setFFromDate(''); setFToDate('');
+    setPage(0);
+    setQuery({ loanCode: '', borrowerName: '', status: '', approveStatus: '', fromDate: '', toDate: '' });
+  }
+
+  /* Duyệt / Hủy phiếu mượn */
+  async function handleApprove() {
+    if (!confirmModal) return;
+    setApproveError('');
+    setApproving(true);
+    try {
+      const res = await loanService.approve(confirmModal.rec.id, confirmModal.approveStatus);
+      const body = res?.data;
+      if (body && (body.success === false || body.code >= 400)) {
+        setApproveError(body.message || 'Có lỗi xảy ra.');
+        return;
+      }
+      const done = confirmModal.approveStatus === 1 ? 'Duyệt phiếu mượn thành công.' : 'Hủy phiếu mượn thành công.';
+      setConfirmModal(null);
+      fetchLoans();
+      showToast(done);
+    } catch (err) {
+      setApproveError(err.response?.data?.message || err.message || 'Có lỗi xảy ra.');
+    } finally {
+      setApproving(false);
+    }
   }
 
   /* Export Excel */
@@ -154,7 +203,9 @@ export default function TongHopPhieuMuonTra() {
     showToast('Xuất dữ liệu thành công.');
   }
 
-  const COL_COUNT = 14;
+  const COL_COUNT = 16;
+  const getApproveLabel = (s) => APPROVE_STATUSES.find(a => a.value === s)?.label ?? '—';
+  const getApproveBadgeColor = (s) => ({ 0: 'badge--yellow', 1: 'badge--green', 2: 'badge--red' }[s] || 'badge--gray');
   const getStatusBadgeColor = (status) => {
     const statusMap = {
       1: 'badge--blue',   // Đang mượn
@@ -199,19 +250,20 @@ export default function TongHopPhieuMuonTra() {
 
       {/* Filter bar */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card__body">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: 12, alignItems: 'flex-end' }}>
-            <div className="field">
+        <div className="card__body" style={{ padding: 20 }}>
+          {/* Hàng 1: Mã phiếu / Tên người mượn / Trạng thái */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div className="field" style={{ margin: 0 }}>
               <label>Mã phiếu mượn</label>
               <input className="input" placeholder="Nhập mã phiếu..."
                 value={fLoanCode} onChange={e => setFLoanCode(e.target.value)} onKeyDown={handleFilterKeyDown} />
             </div>
-            <div className="field">
+            <div className="field" style={{ margin: 0 }}>
               <label>Tên người mượn</label>
               <input className="input" placeholder="Nhập tên..."
                 value={fBorrowerName} onChange={e => setFBorrowerName(e.target.value)} onKeyDown={handleFilterKeyDown} />
             </div>
-            <div className="field">
+            <div className="field" style={{ margin: 0 }}>
               <label>Trạng thái</label>
               <AppSelect
                 options={[{ value: '', label: 'Tất cả' }, ...LOAN_STATUSES]}
@@ -220,21 +272,32 @@ export default function TongHopPhieuMuonTra() {
                 isClearable
               />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <div className="field" style={{ margin: 0 }}>
-                <label style={{ fontSize: '0.75rem' }}>Từ ngày</label>
-                <input className="input" type="date" value={fFromDate} onChange={e => setFFromDate(e.target.value)} />
-              </div>
-              <div className="field" style={{ margin: 0 }}>
-                <label style={{ fontSize: '0.75rem' }}>Đến ngày</label>
-                <input className="input" type="date" value={fToDate} onChange={e => setFToDate(e.target.value)} />
-              </div>
+          </div>
+
+          {/* Hàng 2: Trạng thái duyệt / Từ ngày / Đến ngày / Nút */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 12, alignItems: 'flex-end' }}>
+            <div className="field" style={{ margin: 0 }}>
+              <label>Trạng thái duyệt</label>
+              <AppSelect
+                options={[{ value: '', label: 'Tất cả' }, ...APPROVE_STATUSES]}
+                value={fApproveStatus}
+                onChange={handleApproveFilterChange}
+                isClearable
+              />
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <label>Từ ngày</label>
+              <input className="input" type="date" value={fFromDate} onChange={e => setFFromDate(e.target.value)} />
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <label>Đến ngày</label>
+              <input className="input" type="date" value={fToDate} onChange={e => setFToDate(e.target.value)} />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn--primary" onClick={handleSearch} disabled={loading}>
+              <button className="btn" style={{ background: '#c8102e', color: '#fff' }} onClick={handleSearch} disabled={loading}>
                 <IconSearch /> Tìm kiếm
               </button>
-              <button className="btn btn--outline" onClick={clearFilters} disabled={loading}>Xóa bộ lọc</button>
+              <button className="btn" style={{ background: '#fff', border: '1px solid #d1d5db' }} onClick={clearFilters} disabled={loading}>Xóa bộ lọc</button>
             </div>
           </div>
         </div>
@@ -260,9 +323,11 @@ export default function TongHopPhieuMuonTra() {
                 <th>Tiết trả</th>
                 <th>Thời gian trả thực tế</th>
                 <th>Trạng thái</th>
+                <th>Trạng thái duyệt</th>
                 <th>Trả chậm (phút)</th>
                 <th>Ghi chú</th>
                 <th>Ngày cập nhật</th>
+                <th>Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -289,6 +354,11 @@ export default function TongHopPhieuMuonTra() {
                       {getStatusLabel(rec.status)}
                     </span>
                   </td>
+                  <td>
+                    <span className={`badge ${getApproveBadgeColor(rec.approveStatus)}`}>
+                      {getApproveLabel(rec.approveStatus)}
+                    </span>
+                  </td>
                   <td style={{ color: isLate(rec) ? '#c8102e' : '#9ca3af', textAlign: 'center', fontWeight: rec.lateMinutes ? 600 : 400 }}>
                     {rec.lateMinutes != null ? rec.lateMinutes : '—'}
                   </td>
@@ -296,6 +366,28 @@ export default function TongHopPhieuMuonTra() {
                     {rec.note || '—'}
                   </td>
                   <td style={{ color: '#9ca3af', fontSize: '0.82rem' }}>{formatDateTime(rec.modifiedDate)}</td>
+                  <td>
+                    {rec.approveStatus === 0 ? (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          className="btn btn--sm"
+                          style={{ background: '#059669', color: '#fff' }}
+                          onClick={() => { setApproveError(''); setConfirmModal({ rec, approveStatus: 1 }); }}
+                        >
+                          Duyệt
+                        </button>
+                        <button
+                          className="btn btn--sm"
+                          style={{ background: '#c8102e', color: '#fff' }}
+                          onClick={() => { setApproveError(''); setConfirmModal({ rec, approveStatus: 2 }); }}
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ color: '#cbd2da' }}>—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -337,10 +429,45 @@ export default function TongHopPhieuMuonTra() {
           )}
         </div>
       </div>
+
+      {/* Modal xác nhận duyệt / hủy */}
+      {confirmModal && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !approving && setConfirmModal(null)}>
+          <div className="modal" style={{ maxWidth: 420 }}>
+            <div className="modal__head">
+              <span className="modal__title">{confirmModal.approveStatus === 1 ? 'Xác nhận duyệt' : 'Xác nhận hủy'}</span>
+              <button className="modal__close btn" onClick={() => setConfirmModal(null)} disabled={approving}><IconX /></button>
+            </div>
+            <div className="modal__body">
+              <p style={{ color: '#374151' }}>
+                {confirmModal.approveStatus === 1 ? 'Xác nhận duyệt phiếu mượn này?' : 'Xác nhận hủy phiếu mượn này?'}<br />
+                Mã phiếu: <strong>{confirmModal.rec.loanCode}</strong>
+              </p>
+              {approveError && (
+                <div style={{ marginTop: 6, padding: '10px 14px', background: '#fff0f2', border: '1px solid #fca5a5', borderRadius: 8, color: '#c8102e', fontSize: '0.84rem' }}>
+                  {approveError}
+                </div>
+              )}
+            </div>
+            <div className="modal__footer">
+              <button className="btn btn--outline" onClick={() => setConfirmModal(null)} disabled={approving}>Thoát</button>
+              <button
+                className="btn btn--primary"
+                style={{ background: confirmModal.approveStatus === 1 ? '#059669' : '#c8102e' }}
+                onClick={handleApprove}
+                disabled={approving}
+              >
+                {approving ? 'Đang xử lý...' : 'Xác nhận'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // Icons
+function IconX() { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>; }
 function IconSearch() { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>; }
 function IconUpload() { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>; }

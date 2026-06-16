@@ -51,7 +51,7 @@ export default function LoginPage() {
         login(profileData, data.accessToken, data.refreshToken);
       }
 
-      navigate('/dashboard');
+      navigate('/tai-khoan/ho-so');
     } catch (err) {
       const serverData = err.response?.data;
       const msg =
